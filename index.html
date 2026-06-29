@@ -364,7 +364,6 @@
 </head>
 <body>
 
-<!-- NAV -->
 <nav>
   <div class="nav-logo">
     <div class="icon">
@@ -386,7 +385,6 @@
   </div>
 </nav>
 
-<!-- PAGES -->
 <div id="page-setup" class="page active">
   <div class="setup-hero">
     <h1>🏆 Tourney Generator</h1>
@@ -469,7 +467,6 @@
   </div>
 </div>
 
-<!-- SCORE MODAL -->
 <div class="modal-bg" id="score-modal">
   <div class="modal">
     <div class="modal-title" id="modal-title">Input Skor</div>
@@ -705,6 +702,7 @@ function renderStandings() {
         <span class="match-home">${playerName(m.home)}</span>
         <span class="match-score">${m.hs !== null ? `${m.hs} : ${m.as}` : 'VS'}</span>
         <span class="match-away">${playerName(m.away)}</span>
+        <span class="match-edit">Babak ${m.babak}</span>
       </div>`;
     });
     html += `</div>`;
