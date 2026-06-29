@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<!--
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║  TOURNEY GENERATOR — versi 3.0 (Logo Navbar + Background)        ║
+  ║  File tunggal HTML + CSS + JavaScript, tidak butuh server.       ║
+  ║  Bisa langsung dibuka di browser atau di-deploy ke GitHub Pages. ║
+  ║                                                                   ║
+  ║  FITUR UTAMA:                                                     ║
+  ║  • Setup turnamen (peserta, grup, metode)                        ║
+  ║  • Klasemen otomatis + input skor + reset skor                   ║
+  ║  • Bracket eliminasi visual                                      ║
+  ║  • Export PDF (Ctrl+P / tombol)                                  ║
+  ║  • Share link read-only (data dikodekan di URL)                  ║
+  ║  • Export/Import JSON untuk backup                               ║
+  ║  • Integrasi Google Form untuk polling                           ║
+  ╚══════════════════════════════════════════════════════════════════╝
+-->
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Tourney Generator by Roundrabbit Community</title>
+
+<style>
+/*
+  ════════════════════════════════════════════════════════
+  BAGIAN 1: CSS CUSTOM PROPERTIES (Variabel Warna & Ukuran)
+  ════════════════════════════════════════════════════════
+  Ini adalah "token desain" — semua warna dan ukuran didefinisikan
+  di satu tempat agar mudah diganti. Misalnya, ingin ganti warna
+  utama dari biru langit ke hijau? Cukup ubah --sky di sini.
+
+  Cara pakai: var(--nama-variabel) di mana saja dalam CSS ini.
+*/
+:root {
+  /* Warna utama — biru langit */
+  --sky: #38bdf8;
+  --sky-dark: #0284c7;
+  --sky-light: #e0f2fe;
+  --sky-pale: #f0f9ff;
+
+  /* Warna aksen — emas */
+  --gold: #f59e0b;
+  --gold-dark: #d97706;
+  --gold-light: #fef3c7;
+
+  /* Warna netral — abu ke putih */
+  --white: #ffffff;
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-400: #94a3b8;
+  --gray-600: #475569;
+  --gray-800: #1e293b;
+
+  /* Warna status */
+  --green: #22c55e;
+  --red: #ef4444;
+
+  /* Ukuran sudut kartu — ganti angka untuk lebih/kurang bulat */
+  --radius: 12px;
+  --radius-lg: 20px;
+  --radius-sm: 8px;
+
+  /* Bayangan kartu */
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,.12);
+}
+
+/* Reset dasar — menghilangkan margin/padding bawaan browser */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/*
+  ── BODY DENGAN LOGO SEBAGAI LATAR BELAKANG ──────────────────────
+  Logo ditampilkan sebagai watermark di seluruh halaman.
+  opacity di dalam ::before: nilai 0.0–1.0, makin besar makin pekat.
+  Ganti angka 0.06 untuk memperjelas/mempersamar logo background.
+  background-size: "cover" = penuhi layar, "contain" = tampilkan utuh.
+  background-position: "center" = tengah layar.
+*/
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--gray-50);
+  color: var(--gray-800);
+  min-height: 100vh;
+  position: relative;
+}
+/* ::before adalah pseudo-element — overlay transparan di belakang konten */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: var(--bg-logo-url, none);
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: 55vmin; /* Ukuran logo background: ganti % untuk resize */
+  opacity: 0.06; /* Transparansi logo: 0.0 = tak terlihat, 1.0 = penuh */
+}
+/* Semua konten harus di atas ::before */
+nav, .page, .modal-overlay, #password-gate, #toast {
+  position: relative; z-index: 1;
+}
+button { font-family: inherit; cursor: pointer; border: none; outline: none; }
+input, select, textarea { font-family: inherit; outline: none; }
+
+/*
+  ════════════════════════════════════════════════════════
+  BAGIAN 2: NAVIGASI
+  ════════════════════════════════════════════════════════
+  "sticky top:0" membuat navbar tetap di atas saat scroll.
+  "z-index:50" agar navbar tampil di atas elemen lain.
+*/
+nav {
+  background: var(--white);
+  border-bottom: 2px solid var(--sky-light);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 58px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 2px 8px rgba(56,189,248,.1);
+  gap: 12px;
+}
+.nav-logo { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.nav-logo .icon {
+    width:36px;height:36px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden; /* Biar gambar logo gak keluar jalur dari kotak */
+}
+.nav-logo .logo-text {
+  font-weight: 800; font-size: 17px; letter-spacing: -.03em;
+  background: linear-gradient(90deg, var(--sky-dark), var(--gold-dark));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+/* Tab navigasi halaman */
+.nav-tabs { display: flex; gap: 2px; background: var(--gray-100); border-radius: 10px; padding: 3px; }
+.nav-tab {
+  padding: 5px 12px; border-radius: 7px; font-size: 12px; font-weight: 600;
+  color: var(--gray-600); background: transparent; border: none; cursor: pointer;
+  transition: all .18s; white-space: nowrap;
+}
+.nav-tab.active { background: var(--white); color: var(--sky-dark); box-shadow: var(--shadow); }
+
+/* Tombol aksi di kanan nav */
+.nav-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.btn-sm {
+  padding: 5px 11px; border-radius: 7px; font-size: 11px; font-weight: 700;
+  transition: all .18s; cursor: pointer; white-space: nowrap;
+}
+.btn-gold  { background: var(--gold-light);  color: var(--gold-dark);  border: 1px solid var(--gold); }
+.btn-sky   { background: var(--sky-light);   color: var(--sky-dark);   border: 1px solid var(--sky); }
+.btn-gray  { background: var(--gray-100);    color: var(--gray-600);   border: 1px solid var(--gray-200); }
+.btn-green { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+.btn-sm:hover { filter: brightness(.94); }
+
+/*
+  ════════════════════════════════════════════════════════
+  BAGIAN 3: SISTEM HALAMAN (PAGE TABS)
+  ════════════════════════════════════════════════════════
+  Setiap halaman disembunyikan (display:none) kecuali yang punya
+  class "active". JavaScript akan toggle class ini saat tab diklik.
+*/
+.page { display: none; padding: 20px; max-width: 920px; margin: 0 auto; }
+.page.active { display: block; }
+
+/*
+  ════════════════════════════════════════════════════════
+  BAGIAN 4: KOMPONEN KARTU (CARD)
+  ════════════════════════════════════════════════════════
+  Card adalah kotak putih berisi konten. Dipakai berulang di seluruh
+  halaman. Ubah --radius-lg untuk membuat sudut lebih/kurang bulat.
+*/
+.card {
+  background: var(--white); border-radius: var(--radius-lg);
+  padding: 22px; box-shadow: var(--shadow);
+  border: 1px solid var(--gray-200); margin-bottom: 14px;
+}
+.card-title {
+  font-size: 15px; font-weight: 700; color: var(--gray-800);
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sky); flex-shrink: 0; }
+
+/* ── SETUP PAGE ── */
+.setup-hero {
+  background: linear-gradient(135deg, var(--sky-pale) 0%, var(--gold-light) 100%);
+  border: 1px solid var(--sky-light); border-radius: var(--radius-lg);
+  padding: 28px; text-align: center; margin-bottom: 18px;
+}
+.setup-hero h1 {
+  font-size: 26px; font-weight: 900; letter-spacing: -.04em;
+  background: linear-gradient(90deg, var(--sky-dark), var(--gold-dark));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 5px;
+}
+.setup-hero p { color: var(--gray-600); font-size: 13px; }
+
+/*
+  Form grid — menggunakan CSS Grid untuk dua kolom.
+  Pada layar kecil (mobile) otomatis jadi satu kolom via @media query di bawah.
+*/
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label {
+  font-size: 11px; font-weight: 700; color: var(--gray-600);
+  letter-spacing: .06em; text-transform: uppercase;
+}
+.form-group input, .form-group select {
+  padding: 9px 12px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm);
+  font-size: 13px; background: var(--white); color: var(--gray-800); transition: border-color .18s;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--sky); }
+.form-hint { font-size: 10px; color: var(--gray-400); margin-top: 2px; }
+
+/* Kartu pilihan metode turnamen */
+.method-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 4px; }
+.method-card {
+  border: 2px solid var(--gray-200); border-radius: var(--radius);
+  padding: 14px 10px; text-align: center; cursor: pointer;
+  transition: all .18s; background: var(--white);
+}
+.method-card:hover { border-color: var(--sky-light); background: var(--sky-pale); }
+.method-card.selected {
+  border-color: var(--sky); background: var(--sky-pale);
+  box-shadow: 0 0 0 3px rgba(56,189,248,.15);
+}
+.method-card .mc-icon { font-size: 26px; margin-bottom: 6px; }
+.method-card .mc-name { font-size: 12px; font-weight: 700; color: var(--gray-800); margin-bottom: 3px; }
+.method-card .mc-desc { font-size: 10px; color: var(--gray-400); line-height: 1.4; }
+
+.elim-mode-row { display: flex; gap: 8px; margin-top: 8px; }
+.elim-btn {
+  flex: 1; padding: 9px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 700;
+  border: 2px solid var(--gray-200); background: var(--white); color: var(--gray-600); cursor: pointer; transition: all .18s;
+}
+.elim-btn.active { border-color: var(--sky); background: var(--sky-pale); color: var(--sky-dark); }
+
+/* Baris input nama peserta */
+#players-container { display: flex; flex-direction: column; gap: 7px; }
+.player-row { display: flex; gap: 8px; align-items: center; }
+.player-num {
+  width: 26px; height: 26px; border-radius: 50%; background: var(--sky-light);
+  color: var(--sky-dark); font-weight: 800; font-size: 11px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.player-row input {
+  flex: 1; padding: 7px 11px; border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-sm); font-size: 13px;
+}
+.player-row input:focus { border-color: var(--sky); }
+.group-badge-pill {
+  padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; flex-shrink: 0;
+}
+
+/* Tombol utama generate */
+.btn-primary {
+  width: 100%; padding: 13px; border-radius: var(--radius); font-size: 14px; font-weight: 800;
+  background: linear-gradient(135deg, var(--sky), var(--sky-dark)); color: #fff;
+  box-shadow: 0 4px 16px rgba(56,189,248,.35); border: none; cursor: pointer;
+  transition: all .2s; letter-spacing: .02em;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(56,189,248,.45); }
+.btn-primary:active { transform: translateY(0); }
+
+/* ── STANDINGS ── */
+.group-header-row {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+}
+
+/*
+  Tabel klasemen — border-collapse menghilangkan jarak antar sel.
+  Setiap kolom punya lebar yang ditetapkan via style inline di JS.
+*/
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead tr { background: var(--gray-50); }
+th {
+  padding: 7px 8px; text-align: center; font-size: 9px; font-weight: 700;
+  color: var(--gray-400); letter-spacing: .1em; border-bottom: 2px solid var(--gray-200);
+}
+th.col-name { text-align: left; }
+td { padding: 8px 8px; text-align: center; border-bottom: 1px solid var(--gray-100); }
+td.col-name { text-align: left; font-weight: 600; }
+tr:last-child td { border-bottom: none; }
+tr.lolos td:first-child { border-left: 3px solid var(--sky); }
+tr:not(.lolos) td:first-child { border-left: 3px solid transparent; }
+.pts-cell { font-weight: 800; font-size: 14px; }
+.rank-badge {
+  display: inline-flex; width: 20px; height: 20px; border-radius: 50%;
+  align-items: center; justify-content: center; font-size: 10px; font-weight: 800;
+}
+.rank-1 { background: var(--gold); color: #fff; }
+.rank-2 { background: var(--sky); color: #fff; }
+.rank-other { background: var(--gray-100); color: var(--gray-600); }
+
+/* Baris match di jadwal */
+.match-list { border: 1px solid var(--gray-200); border-radius: var(--radius); overflow: hidden; }
+.babak-label {
+  padding: 5px 12px; background: var(--gray-50); font-size: 9px; font-weight: 700;
+  color: var(--gray-400); letter-spacing: .12em; text-transform: uppercase;
+  border-bottom: 1px solid var(--gray-100);
+}
+.match-item {
+  display: flex; align-items: center; padding: 9px 12px;
+  border-bottom: 1px solid var(--gray-100); cursor: pointer; transition: background .12s;
+}
+.match-item:hover { background: var(--sky-pale); }
+.match-item:last-child { border-bottom: none; }
+.match-home, .match-away { flex: 1; font-size: 12px; font-weight: 600; color: var(--gray-700); }
+.match-home { text-align: right; }
+.match-score-box {
+  min-width: 72px; text-align: center; margin: 0 8px;
+  border-radius: var(--radius-sm); padding: 4px 8px;
+  background: var(--gray-100); font-size: 13px; font-weight: 800;
+  letter-spacing: 2px; color: var(--gray-700); border: 1.5px solid var(--gray-200);
+}
+.match-score-box.played { background: var(--sky-pale); border-color: var(--sky); color: var(--sky-dark); }
+.match-vs { color: var(--gray-400); font-size: 10px; font-weight: 700; }
+.match-win { color: var(--sky-dark); font-weight: 800; }
+.match-actions { display: flex; gap: 4px; margin-left: 6px; }
+.btn-icon {
+  width: 26px; height: 26px; border-radius: 6px; display: flex;
+  align-items: center; justify-content: center; font-size: 13px;
+  border: none; cursor: pointer; transition: all .15s;
+}
+.btn-edit-match { background: var(--sky-light); color: var(--sky-dark); }
+.btn-reset-match { background: #fee2e2; color: var(--red); }
+.btn-icon:hover { filter: brightness(.9); transform: scale(1.08); }
+
+/* ── BRACKET ── */
+.bracket-scroll { overflow-x: auto; padding-bottom: 12px; }
+.bracket-flex { display: flex; align-items: stretch; min-width: max-content; gap: 0; }
+.bracket-col { display: flex; flex-direction: column; justify-content: space-around; min-width: 150px; padding: 0 6px; }
+.bracket-col-label {
+  text-align: center; font-size: 9px; font-weight: 700; letter-spacing: .12em;
+  color: var(--gray-400); padding: 5px 0 10px; text-transform: uppercase;
+}
+.bracket-match-box {
+  border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm);
+  background: var(--white); overflow: hidden; margin: 3px 0;
+  box-shadow: var(--shadow); cursor: pointer; transition: border-color .15s;
+}
+.bracket-match-box:hover { border-color: var(--sky); }
+.bracket-match-box.has-players { border-color: var(--sky-light); }
+.bracket-player-row {
+  padding: 6px 9px; font-size: 11px; font-weight: 600;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.bracket-player-row:first-child { border-bottom: 1px solid var(--gray-100); }
+.bracket-player-row.is-winner { background: var(--sky-pale); color: var(--sky-dark); font-weight: 800; }
+.bracket-player-row.is-tbd { color: var(--gray-400); font-style: italic; }
+.bracket-score { font-weight: 800; font-size: 12px; min-width: 16px; text-align: right; }
+.bracket-connector { display: flex; align-items: center; color: var(--gray-300); font-size: 16px; padding: 0 2px; }
+
+/* ── MODAL INPUT SKOR ── */
+/*
+  Modal adalah "jendela popup" yang tampil di atas konten.
+  position:fixed + inset:0 membuat overlay menutupi seluruh layar.
+  backdrop-filter:blur membuat latar belakang sedikit blur (tidak semua browser support).
+*/
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(15,23,42,.45);
+  display: none; align-items: center; justify-content: center; z-index: 200;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--white); border-radius: var(--radius-lg); padding: 26px;
+  width: 320px; box-shadow: var(--shadow-lg);
+  animation: modalPop .22s cubic-bezier(.34,1.56,.64,1) forwards;
+}
+/* Animasi popup saat modal muncul — scale dari kecil ke normal */
+@keyframes modalPop {
+  from { opacity: 0; transform: scale(.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.modal-heading { font-size: 13px; font-weight: 700; color: var(--gray-500); margin-bottom: 18px; text-align: center; }
+.modal-score-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+.modal-side { flex: 1; text-align: center; }
+.modal-side p { font-size: 12px; font-weight: 700; margin-bottom: 7px; color: var(--gray-800); }
+.modal-score-input {
+  width: 100%; text-align: center; font-size: 30px; font-weight: 900;
+  padding: 9px; border: 2px solid var(--gray-200); border-radius: var(--radius);
+  color: var(--sky-dark); transition: border-color .18s;
+}
+.modal-score-input:focus { border-color: var(--sky); }
+.modal-dash { color: var(--gray-300); font-size: 22px; font-weight: 300; }
+.modal-btn-row { display: flex; gap: 8px; }
+.btn-cancel-modal {
+  flex: 1; padding: 9px; border-radius: var(--radius-sm);
+  background: var(--gray-100); color: var(--gray-600); font-weight: 700; font-size: 12px;
+}
+.btn-save-modal {
+  flex: 2; padding: 9px; border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--sky), var(--sky-dark));
+  color: #fff; font-weight: 700; font-size: 12px;
+}
+.btn-cancel-modal:hover { background: var(--gray-200); }
+.btn-save-modal:hover { opacity: .88; }
+
+/* ── SHARE MODAL ── */
+.share-url-box {
+  width: 100%; padding: 9px 11px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm);
+  font-size: 11px; color: var(--gray-600); background: var(--gray-50); resize: none; height: 72px;
+  word-break: break-all;
+}
+.share-note { font-size: 11px; color: var(--gray-400); margin-top: 8px; line-height: 1.5; }
+
+/* ── POLLING ── */
+.poll-hero {
+  background: linear-gradient(135deg, var(--gold-light), #fff);
+  border: 1px solid var(--gold); border-radius: var(--radius-lg);
+  padding: 18px; margin-bottom: 14px; display: flex; align-items: center; gap: 12px;
+}
+.poll-hero-icon { font-size: 34px; }
+.poll-hero h3 { font-size: 15px; font-weight: 800; color: var(--gold-dark); margin-bottom: 3px; }
+.poll-hero p { font-size: 11px; color: var(--gray-600); line-height: 1.5; }
+
+/* Card konfigurasi GForm */
+.gform-config {
+  background: var(--sky-pale); border: 1.5px solid var(--sky-light);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 14px;
+}
+.gform-config label { font-size: 11px; font-weight: 700; color: var(--sky-dark); display: block; margin-bottom: 5px; }
+.gform-config input {
+  width: 100%; padding: 8px 11px; border: 1.5px solid var(--sky-light);
+  border-radius: var(--radius-sm); font-size: 12px; background: var(--white);
+}
+.gform-config input:focus { border-color: var(--sky); }
+.gform-note { font-size: 10px; color: var(--sky-dark); margin-top: 6px; opacity: .75; line-height: 1.5; }
+
+.poll-embed-wrap {
+  border-radius: var(--radius); overflow: hidden;
+  border: 1.5px solid var(--sky-light); background: var(--white);
+}
+.poll-embed-wrap iframe { display: block; width: 100%; border: none; }
+
+/* ── PROGRESS BAR ── */
+.progress-bar { height: 4px; background: var(--gray-200); border-radius: 999px; margin-top: 5px; }
+.progress-fill {
+  height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--sky), var(--gold)); transition: width .5s;
+}
+
+/* ── TAG / BADGE ── */
+.tag {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font-size: 10px; font-weight: 700; letter-spacing: .04em;
+}
+.tag-sky  { background: var(--sky-light);  color: var(--sky-dark);  border: 1px solid var(--sky);  }
+.tag-gold { background: var(--gold-light); color: var(--gold-dark); border: 1px solid var(--gold); }
+.tag-green { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+
+/* ── SECTION LABEL (garis pemisah dengan teks) ── */
+.section-label {
+  font-size: 9px; font-weight: 700; letter-spacing: .14em; color: var(--gray-400);
+  text-transform: uppercase; margin-bottom: 9px; display: flex; align-items: center; gap: 7px;
+}
+.section-label::after { content: ''; flex: 1; height: 1px; background: var(--gray-200); }
+
+/* ── EMPTY STATE ── */
+.empty-state { text-align: center; padding: 44px 20px; color: var(--gray-400); }
+.empty-state .es-icon { font-size: 38px; margin-bottom: 11px; }
+.empty-state p { font-size: 13px; }
+
+/*
+  ════════════════════════════════════════════════════════
+  BAGIAN 5: PRINT / PDF STYLES
+  ════════════════════════════════════════════════════════
+  Blok "@media print" HANYA aktif saat mencetak atau export PDF.
+  Elemen yang tidak perlu di PDF (nav, tombol, modal) disembunyikan.
+  Setiap kartu grup akan mulai di halaman baru (page-break-before).
+*/
+@media print {
+  nav, .nav-tabs, .nav-actions,
+  .setup-hero, #page-setup, #page-bracket, #page-polling,
+  .match-actions, .btn-primary, .btn-sm,
+  .modal-overlay { display: none !important; }
+
+  body { background: #fff; font-size: 11px; }
+  .page { display: block !important; padding: 0; }
+  #page-standings { display: block !important; }
+  .card {
+    box-shadow: none; border: 1px solid #ddd;
+    page-break-inside: avoid; margin-bottom: 10px;
+  }
+  .card + .card { page-break-before: auto; }
+  table { font-size: 10px; }
+  th, td { padding: 5px 6px; }
+}
+
+/* ── TOAST NOTIFIKASI ── */
+/*
+  Toast adalah notifikasi kecil yang muncul sementara di bawah layar.
+  translateY(100px) membuatnya tersembunyi di bawah, class "show"
+  menggesernya ke posisi normal dengan animasi CSS transition.
+*/
+#toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
+  background: var(--gray-800); color: #fff; padding: 9px 18px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; z-index: 300; transition: transform .28s;
+  pointer-events: none; white-space: nowrap; box-shadow: var(--shadow-lg);
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── RESPONSIVE MOBILE ── */
+@media (max-width: 600px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .method-grid { grid-template-columns: 1fr; }
+  nav { padding: 0 10px; gap: 6px; }
+  .nav-logo .logo-text { font-size: 14px; }
+  .page { padding: 12px; }
+  .nav-actions { gap: 4px; }
+  .btn-sm { padding: 5px 8px; font-size: 10px; }
+}
+</style>
+</head>
+<body>
+
+<!--
+  ════════════════════════════════════════════════════════
+  BAGIAN 6: NAVIGASI HTML
+  ════════════════════════════════════════════════════════
+  onclick="showPage('nama')" memanggil fungsi JavaScript untuk berpindah halaman.
+  Tombol Import/Export/Share memanggil fungsi masing-masing di bagian JS.
+-->
+<!--
+  ════════════════════════════════════════════════════════
+  PASSWORD GATE — Layar kunci, tampil sebelum konten web
+  ════════════════════════════════════════════════════════
+  Logo dan judul juga tampil di sini agar konsisten.
+  Untuk ganti password default: cari TOURNEY_DEFAULT_PASSWORD di bagian JS.
+-->
+<div id="password-gate">
+  <div class="gate-box">
+    <div class="gate-logo">
+      <!--
+        Logo di layar kunci.
+        Secara otomatis sinkron dengan logo navbar via JavaScript.
+        Untuk ganti logo: Settings → Ganti Logo (setelah login).
+      -->
+      <img id="gate-logo-img" src="Logo Roundrabbit.png" alt="Logo"
+           onerror="this.style.display='none';this.parentElement.innerHTML='🏆'"/>
+    </div>
+    <div class="gate-title">Tourney Generator</div>
+    <div class="gate-sub">by Roundrabbit Community · Masukkan password untuk lanjut</div>
+    <div class="gate-input-wrap">
+      <input class="gate-input" id="gate-pw-input" type="password"
+             placeholder="••••••••••"
+             onkeydown="if(event.key==='Enter') checkPassword()"/>
+      <button class="gate-toggle" onclick="toggleGatePw()" id="gate-pw-eye" title="Tampilkan/sembunyikan">👁</button>
+    </div>
+    <div class="gate-err" id="gate-err"></div>
+    <button class="gate-btn" onclick="checkPassword()">🔓 Masuk</button>
+  </div>
+</div>
+
+<nav>
+  <div class="nav-logo">
+    <!--
+      Logo navbar (versi 1: sejajar judul).
+      Ukuran: 40x40px. Ganti nilai width/height di CSS .nav-logo .logo-img-wrap
+      untuk memperbesar/perkecil.
+      Sumber gambar: diset via Settings → Ganti Logo.
+      Default: file "Logo Roundrabbit.png" di folder yang sama.
+      onerror: jika file tidak ditemukan, tampilkan emoji 🏆 sebagai fallback.
+    -->
+    <!-- Versi 3: Logo sejajar navbar DAN sekaligus ada di background halaman -->
+    <div class="logo-img-wrap">
+      <img id="nav-logo-img" src="Logo Roundrabbit.png" alt="Logo Roundrabbit"
+           onerror="this.style.display='none';this.parentElement.innerHTML='🏆'"/>
+    </div>
+    <div>
+      <span class="logo-text">Tourney Generator</span>
+      <span class="logo-sub">by Roundrabbit Community</span>
+    </div>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('setup',this)">Setup</button>
+    <button class="nav-tab" onclick="showPage('standings',this)">Klasemen</button>
+    <button class="nav-tab" onclick="showPage('bracket',this)">Bracket</button>
+    <button class="nav-tab" onclick="showPage('polling',this)">Polling</button>
+  </div>
+  <div class="nav-actions">
+    <button class="btn-sm" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0"
+      onclick="openSettings()" title="Ganti logo & password">⚙ Settings</button>
+    <button class="btn-sm btn-green" onclick="openShareModal()" title="Bagikan link read-only">🔗 Share</button>
+    <button class="btn-sm btn-gold" onclick="exportPDF()" title="Export ke PDF">📄 PDF</button>
+    <button class="btn-sm btn-sky" onclick="exportJSON()" title="Download backup JSON">⬇ JSON</button>
+    <button class="btn-sm btn-gray" onclick="triggerImport()" title="Upload backup JSON">⬆ Import</button>
+  </div>
+</nav>
+
+<!-- Helper input file tersembunyi untuk import JSON -->
+<input type="file" id="file-input" accept=".json" style="display:none" onchange="handleImport(event)"/>
+
+<!--
+  ════════════════════════════════════════════════════════
+  HALAMAN 1: SETUP TURNAMEN
+  ════════════════════════════════════════════════════════
+-->
+<div id="page-setup" class="page active">
+  <div class="setup-hero">
+    <h1>🏆 Tourney Generator by Roundrabbit Community</h1>
+    <p>Buat turnamen — round robin, home-away, atau eliminasi langsung</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Pengaturan Umum</div>
+    <div class="form-grid" style="margin-bottom:14px">
+      <div class="form-group">
+        <label>Nama Turnamen</label>
+        <input id="s-name" type="text" placeholder="cth: Liga Kecamatan 2025"/>
+      </div>
+      <div class="form-group">
+        <label>Jumlah Peserta</label>
+        <input id="s-players" type="number" min="2" max="64" value="10" onchange="rebuildPlayerInputs()"/>
+        <span class="form-hint">Maks. 64 peserta</span>
+      </div>
+      <div class="form-group">
+        <label>Jumlah Grup</label>
+        <input id="s-groups" type="number" min="1" max="16" value="2" onchange="rebuildPlayerInputs()"/>
+      </div>
+      <div class="form-group">
+        <label>Peserta Lolos per Grup</label>
+        <input id="s-qualify" type="number" min="1" max="8" value="2"/>
+        <span class="form-hint">Akan lanjut ke bracket/fase berikutnya</span>
+      </div>
+    </div>
+
+    <div class="section-label">Metode Pertandingan</div>
+    <div class="method-grid">
+      <div class="method-card selected" onclick="selectMethod('roundrobin',this)">
+        <div class="mc-icon">🔄</div>
+        <div class="mc-name">Round Robin</div>
+        <div class="mc-desc">Semua peserta dalam grup saling bertemu sekali</div>
+      </div>
+      <div class="method-card" onclick="selectMethod('homeaway',this)">
+        <div class="mc-icon">↔️</div>
+        <div class="mc-name">Home & Away</div>
+        <div class="mc-desc">Bertemu dua kali — kandang dan tandang</div>
+      </div>
+      <div class="method-card" onclick="selectMethod('elimination',this)">
+        <div class="mc-icon">⚡</div>
+        <div class="mc-name">Eliminasi</div>
+        <div class="mc-desc">Kalah sekali langsung gugur</div>
+      </div>
+    </div>
+
+    <!-- Opsi ini hanya muncul jika metode Eliminasi dipilih -->
+    <div id="elim-options" style="display:none;margin-top:12px">
+      <div class="section-label" style="margin-top:6px">Mode Bracket</div>
+      <div class="elim-mode-row">
+        <button class="elim-btn active" id="btn-elim-auto" onclick="setElimMode('auto')">⚡ Otomatis — pemenang lanjut sendiri</button>
+        <button class="elim-btn" id="btn-elim-manual" onclick="setElimMode('manual')">✋ Manual — isi sendiri lawan tiap babak</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--gold)"></span>Nama Peserta</div>
+    <div id="players-container">
+      <!-- Diisi oleh JavaScript saat halaman dimuat atau jumlah peserta berubah -->
+    </div>
+  </div>
+
+  <button class="btn-primary" onclick="generateTournament()">🚀 Generate Turnamen</button>
+  <div style="height:28px"></div>
+</div>
+
+<!--
+  ════════════════════════════════════════════════════════
+  HALAMAN 2: KLASEMEN
+  ════════════════════════════════════════════════════════
+-->
+<div id="page-standings" class="page">
+  <div id="standings-content">
+    <div class="empty-state">
+      <div class="es-icon">📊</div>
+      <p>Belum ada turnamen.<br>Mulai dari tab <strong>Setup</strong>.</p>
+    </div>
+  </div>
+</div>
+
+<!--
+  ════════════════════════════════════════════════════════
+  HALAMAN 3: BRACKET
+  ════════════════════════════════════════════════════════
+-->
+<div id="page-bracket" class="page">
+  <div id="bracket-content">
+    <div class="empty-state">
+      <div class="es-icon">🪜</div>
+      <p>Bracket akan muncul setelah turnamen di-generate.</p>
+    </div>
+  </div>
+</div>
+
+<!--
+  ════════════════════════════════════════════════════════
+  HALAMAN 4: POLLING (Google Form Embed)
+  ════════════════════════════════════════════════════════
+-->
+<div id="page-polling" class="page">
+  <div class="poll-hero">
+    <div class="poll-hero-icon">🗳️</div>
+    <div>
+      <h3>Polling Dukungan Peserta</h3>
+      <p>Terhubung ke Google Form milikmu. Hasil voting masuk ke Google Sheets secara otomatis.<br>
+         Paste link embed Google Form kamu di bawah ini.</p>
+    </div>
+  </div>
+
+  <!--
+    Kolom input URL Google Form.
+    Pengguna paste URL embed dari Google Form mereka di sini.
+    Format URL embed GForm: https://docs.google.com/forms/d/e/XXXX/viewform?embedded=true
+    Cara mendapatkan: Google Form → Kirim → tab <>  → salin URL embed.
+  -->
+  <div class="gform-config">
+    <label>🔗 URL Embed Google Form</label>
+    <input
+      id="gform-url"
+      type="url"
+      placeholder="https://docs.google.com/forms/d/e/XXXX.../viewform?embedded=true"
+      oninput="updateGFormEmbed()"
+    />
+    <p class="gform-note">
+      Cara dapat URL ini: Buka Google Form kamu → klik tombol <strong>Kirim</strong> →
+      pilih tab <strong>&lt; &gt;</strong> (Embed) → salin URL di bagian src="" → paste di sini.<br>
+      Hasil vote otomatis masuk ke Google Sheets yang terhubung ke form kamu.
+    </p>
+  </div>
+
+  <!-- Iframe Google Form akan ditampilkan di sini -->
+  <div id="gform-embed-wrap" class="poll-embed-wrap" style="display:none">
+    <iframe id="gform-iframe" src="" width="100%" height="520" frameborder="0" marginheight="0" marginwidth="0">
+      Memuat...
+    </iframe>
+  </div>
+
+  <div id="gform-placeholder" style="text-align:center;padding:32px;color:var(--gray-400)">
+    <div style="font-size:36px;margin-bottom:10px">📋</div>
+    <p style="font-size:13px">Paste URL Google Form di atas untuk menampilkan form polling di sini.</p>
+  </div>
+</div>
+
+<!--
+  ════════════════════════════════════════════════════════
+  MODAL: INPUT SKOR PERTANDINGAN
+  ════════════════════════════════════════════════════════
+-->
+<div class="modal-overlay" id="score-modal" onclick="handleModalBgClick(event)">
+  <div class="modal-box">
+    <div class="modal-heading" id="modal-title">Input Skor Pertandingan</div>
+    <div class="modal-score-row">
+      <div class="modal-side">
+        <p id="modal-home-name">Tim A</p>
+        <input class="modal-score-input" id="modal-hs" type="number" min="0" value="0"/>
+      </div>
+      <div class="modal-dash">—</div>
+      <div class="modal-side">
+        <p id="modal-away-name">Tim B</p>
+        <input class="modal-score-input" id="modal-as" type="number" min="0" value="0"/>
+      </div>
+    </div>
+    <div class="modal-btn-row">
+      <button class="btn-cancel-modal" onclick="closeScoreModal()">Batal</button>
+      <button class="btn-save-modal" onclick="saveScore()">Simpan Skor ✓</button>
+    </div>
+  </div>
+</div>
+
+<!--
+  ════════════════════════════════════════════════════════
+  MODAL: SHARE LINK READ-ONLY
+  ════════════════════════════════════════════════════════
+-->
+<div class="modal-overlay" id="share-modal" onclick="handleShareBgClick(event)">
+  <div class="modal-box" style="width:380px">
+    <div class="modal-heading">🔗 Bagikan Turnamen (Read-Only)</div>
+    <p style="font-size:11px;color:var(--gray-600);margin-bottom:10px;line-height:1.5">
+      Link ini berisi seluruh data turnamenmu. Siapapun yang membuka link ini
+      bisa <strong>melihat</strong> klasemen dan jadwal, tapi <strong>tidak bisa mengedit</strong>.
+    </p>
+    <textarea class="share-url-box" id="share-url-text" readonly onclick="this.select()"></textarea>
+    <div class="modal-btn-row" style="margin-top:10px">
+      <button class="btn-cancel-modal" onclick="closeShareModal()">Tutup</button>
+      <button class="btn-save-modal" onclick="copyShareLink()">📋 Salin Link</button>
+    </div>
+    <p class="share-note">
+      ⚠️ Batas panjang URL browser ±8000 karakter. Untuk turnamen besar (&gt;30 peserta),
+      gunakan Export JSON dan kirim file-nya langsung.
+    </p>
+  </div>
+</div>
+
+
+<!--
+  ════════════════════════════════════════════════════════
+  MODAL SETTINGS: Ganti Logo & Password
+  ════════════════════════════════════════════════════════
+  Diakses lewat tombol ⚙ Settings di navbar.
+  Logo disimpan sebagai Data URL (base64) di localStorage
+  sehingga tidak tergantung file eksternal setelah diupload.
+-->
+<div class="modal-overlay" id="settings-modal" onclick="handleSettingsBgClick(event)">
+  <div class="modal-box" style="width:360px">
+    <div class="modal-heading">⚙ Settings</div>
+
+    <!-- BAGIAN GANTI LOGO -->
+    <div class="settings-section">
+      <span class="settings-label">🖼 Logo Aplikasi</span>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="settings-logo-preview">
+          <img id="settings-logo-preview-img" src="Logo Roundrabbit.png" alt="Preview"
+               onerror="this.style.display='none';this.parentElement.innerHTML='🏆'"/>
+        </div>
+        <div>
+          <!--
+            Input file tersembunyi — diklik via tombol label di atasnya.
+            accept="image/*" membatasi hanya file gambar yang bisa dipilih.
+            Saat gambar dipilih, fungsi handleLogoUpload() dijalankan.
+          -->
+          <input type="file" id="logo-file-input" accept="image/*"
+                 style="display:none" onchange="handleLogoUpload(event)"/>
+          <label for="logo-file-input" class="upload-btn">📁 Pilih Gambar Logo</label>
+          <p style="font-size:10px;color:var(--gray-400);margin-top:5px;line-height:1.4">
+            Format: PNG, JPG, SVG.<br>
+            Ukuran ideal: minimal 100×100px.<br>
+            Logo tersimpan otomatis di browser.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- BAGIAN GANTI PASSWORD -->
+    <div class="settings-section">
+      <span class="settings-label">🔐 Ganti Password</span>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="pw-input-row">
+          <input type="password" id="pw-current" placeholder="Password saat ini"/>
+        </div>
+        <div class="pw-input-row">
+          <input type="password" id="pw-new" placeholder="Password baru"/>
+          <input type="password" id="pw-confirm" placeholder="Konfirmasi password baru"/>
+        </div>
+        <button class="btn-save-modal" onclick="changePassword()" style="padding:8px">
+          Simpan Password
+        </button>
+        <p id="pw-change-msg" style="font-size:11px;text-align:center;min-height:16px"></p>
+      </div>
+    </div>
+
+    <div class="modal-btn-row">
+      <button class="btn-cancel-modal" onclick="closeSettings()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- Input tersembunyi untuk import JSON (sudah ada sebelumnya, ini duplikat dijaga) -->
+
+<!-- Toast notifikasi -->
+<div id="toast"></div>
+
+<!--
+  ════════════════════════════════════════════════════════
+  BAGIAN 7: JAVASCRIPT — LOGIKA APLIKASI
+  ════════════════════════════════════════════════════════
+  Semua fungsi dan state ada di sini. Dibagi per seksi
+  agar mudah dicari dan dipelajari.
+-->
+<script>
+/*
+  ── SEKSI A: STATE (Data Global) ──────────────────────────────────────
+  "T" adalah objek utama yang menyimpan seluruh data turnamen.
+  Setiap kali ada perubahan, T di-update dan disimpan ke localStorage.
+
+  localStorage adalah "database mini" di browser — data tetap ada
+  meskipun halaman di-refresh. Data hilang jika cache browser dibersihkan.
+*/
+
+let T = null;            // Objek turnamen aktif (null = belum ada)
+let selectedMethod = 'roundrobin'; // Metode yang dipilih di Setup
+let elimMode = 'auto';   // Mode bracket eliminasi
+let modalCtx = null;     // Konteks modal: info match yang sedang diedit
+
+/*
+  Palet warna untuk grup. Ditambah/dikurangi sesuai kebutuhan.
+  Format: string hex (#RRGGBB).
+*/
+const GROUP_COLORS = [
+  '#38bdf8','#f59e0b','#22c55e','#a78bfa',
+  '#f97316','#ef4444','#14b8a6','#ec4899'
+];
+
+/*
+  ── SEKSI B: INISIALISASI ─────────────────────────────────────────────
+  window.onload dijalankan otomatis saat halaman selesai dimuat.
+  Urutan: cek URL (mode read-only?) → cek localStorage → render.
+*/
+window.onload = function() {
+  // Inisialisasi password gate dan logo (selalu di awal)
+  initPasswordGate();
+  initLogo();
+
+  // Cek apakah URL mengandung data (mode read-only share)
+  const urlData = getDataFromURL();
+  if (urlData) {
+    T = urlData;
+    renderAll();
+    // Sembunyikan tombol edit jika mode read-only
+    setReadOnlyMode(true);
+    showToast('📖 Mode lihat saja — data dari link');
+    // Langsung ke halaman klasemen
+    document.querySelectorAll('.nav-tab')[1].click();
+    return;
+  }
+
+  // Tidak ada data di URL — cek localStorage
+  const saved = localStorage.getItem('tourney_v2');
+  if (saved) {
+    try {
+      T = JSON.parse(saved);
+      rebuildPlayerInputs(); // Sinkronkan input peserta dengan data tersimpan
+      renderAll();
+      showToast('Data tersimpan dimuat ✓');
+    } catch(e) {
+      console.error('Gagal load data:', e);
+    }
+  } else {
+    rebuildPlayerInputs(); // Bangun input kosong
+  }
+
+  // Restore URL GForm jika ada
+  const savedGForm = localStorage.getItem('tourney_gform_url');
+  if (savedGForm) {
+    document.getElementById('gform-url').value = savedGForm;
+    updateGFormEmbed();
+  }
+};
+
+/*
+  ── SEKSI C: NAVIGASI HALAMAN ─────────────────────────────────────────
+  Fungsi ini menyembunyikan semua halaman lalu menampilkan yang dipilih.
+  Parameter: id = 'setup'/'standings'/'bracket'/'polling'
+*/
+function showPage(id, tabEl) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (tabEl) tabEl.classList.add('active');
+  else {
+    // Fallback jika dipanggil tanpa element tab
+    const tabs = document.querySelectorAll('.nav-tab');
+    const idx = ['setup','standings','bracket','polling'].indexOf(id);
+    if (idx >= 0) tabs[idx].classList.add('active');
+  }
+}
+
+/*
+  ── SEKSI D: PILIH METODE TURNAMEN ───────────────────────────────────
+*/
+function selectMethod(m, el) {
+  selectedMethod = m;
+  document.querySelectorAll('.method-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  // Tampilkan opsi mode bracket hanya jika Eliminasi dipilih
+  document.getElementById('elim-options').style.display = m === 'elimination' ? 'block' : 'none';
+}
+
+function setElimMode(m) {
+  elimMode = m;
+  document.getElementById('btn-elim-auto').classList.toggle('active', m === 'auto');
+  document.getElementById('btn-elim-manual').classList.toggle('active', m === 'manual');
+}
+
+/*
+  ── SEKSI E: INPUT NAMA PESERTA ───────────────────────────────────────
+  Fungsi ini membuat baris input nama sesuai jumlah peserta.
+  Grup ditentukan dengan membagi peserta secara merata ke tiap grup.
+*/
+function rebuildPlayerInputs() {
+  const nPlayers = parseInt(document.getElementById('s-players').value) || 4;
+  const nGroups  = parseInt(document.getElementById('s-groups').value)  || 1;
+  const con = document.getElementById('players-container');
+  con.innerHTML = '';
+
+  for (let i = 0; i < nPlayers; i++) {
+    // Math.floor = pembulatan ke bawah, untuk bagi peserta ke grup
+    const gi  = Math.floor(i / Math.ceil(nPlayers / nGroups));
+    const col = GROUP_COLORS[gi % GROUP_COLORS.length];
+    const groupLetter = String.fromCharCode(65 + gi); // 0→A, 1→B, dll
+
+    // Ambil nama yang sudah ada (jika ada data tersimpan)
+    const existingName = T && T.players[i] ? T.players[i].name : '';
+
+    const row = document.createElement('div');
+    row.className = 'player-row';
+    row.innerHTML = `
+      <div class="player-num">${i + 1}</div>
+      <input type="text" id="p-${i}" placeholder="Nama peserta ${i + 1}" value="${existingName}"/>
+      <span class="group-badge-pill" style="background:${col}22;color:${col};border:1px solid ${col}55">
+        Grup ${groupLetter}
+      </span>
+    `;
+    con.appendChild(row);
+  }
+}
+
+/*
+  ── SEKSI F: ALGORITMA ROUND ROBIN ───────────────────────────────────
+  Algoritma "circle method" — standar pembuatan jadwal round robin.
+  Cara kerja:
+  1. Semua pemain dimasukkan ke array "list"
+  2. Pemain pertama (index 0) tetap di tempatnya
+  3. Sisanya dirotasi satu posisi setiap babak
+  4. Pasangan dibentuk: list[0] vs list[n-1], list[1] vs list[n-2], dst
+
+  Parameter: players = array ID peserta
+  Return: array of rounds, setiap round = array pasangan [homeId, awayId]
+*/
+function generateRoundRobin(players) {
+  const rounds = [];
+  const list = [...players];
+  // Jika jumlah peserta ganjil, tambahkan "BYE" (null) sebagai bye
+  if (list.length % 2 !== 0) list.push(null);
+  const total = list.length;
+
+  for (let r = 0; r < total - 1; r++) {
+    const round = [];
+    for (let i = 0; i < total / 2; i++) {
+      const home = list[i];
+      const away = list[total - 1 - i];
+      // Skip jika salah satu adalah BYE
+      if (home !== null && away !== null) round.push([home, away]);
+    }
+    rounds.push(round);
+
+    // Rotasi: elemen pertama tetap, sisanya bergeser satu posisi ke kiri
+    const rotating = list.slice(1);
+    rotating.unshift(rotating.pop()); // pindahkan elemen terakhir ke depan
+    list.splice(1, rotating.length, ...rotating);
+  }
+  return rounds;
+}
+
+/*
+  ── SEKSI G: BUILD BRACKET ELIMINASI ─────────────────────────────────
+  Membuat struktur bracket eliminasi dari daftar peserta.
+  Bracket diisi dari kiri ke kanan: R1 → R2 → ... → Final.
+
+  Cara kerja:
+  1. Hitung "slots" = bilangan bulat 2^n yang cukup menampung semua peserta
+     misal 5 peserta → slots = 8 (karena 2^3 = 8 > 5)
+  2. Isi slot kosong dengan null (bye otomatis)
+  3. Buat rounds: setiap round punya sejumlah match = slots / 2^(round)
+*/
+function buildBracket(playerIds) {
+  let slots = 1;
+  while (slots < playerIds.length) slots *= 2; // Cari pangkat 2 terdekat
+
+  const padded = [...playerIds];
+  while (padded.length < slots) padded.push(null); // Isi bye
+
+  const rounds = [];
+  let current = [...padded];
+  let roundNum = 1;
+
+  while (current.length >= 2) {
+    const matches = [];
+    for (let i = 0; i < current.length; i += 2) {
+      matches.push({
+        id:     `br_r${roundNum}_m${i/2}`, // ID unik setiap match
+        home:   current[i],
+        away:   current[i + 1],
+        hs:     null,   // skor home (null = belum main)
+        as:     null,   // skor away (null = belum main)
+        winner: null    // ID pemenang (null = belum ada)
+      });
+    }
+    rounds.push({ round: roundNum, matches });
+    // Round berikutnya: slot sebanyak jumlah match sekarang (diisi winner nanti)
+    current = matches.map(() => null);
+    roundNum++;
+  }
+  return { rounds };
+}
+
+/*
+  ── SEKSI H: GENERATE TURNAMEN ───────────────────────────────────────
+  Fungsi utama yang dikumpulkan semua data dari form Setup,
+  membuat jadwal, dan menyimpannya ke state T.
+*/
+function generateTournament() {
+  const name     = document.getElementById('s-name').value.trim() || 'Turnamen Baru';
+  const nPlayers = parseInt(document.getElementById('s-players').value) || 4;
+  const nGroups  = parseInt(document.getElementById('s-groups').value)  || 1;
+  const qualify  = parseInt(document.getElementById('s-qualify').value) || 2;
+
+  // Kumpulkan data peserta dari input
+  const players = [];
+  for (let i = 0; i < nPlayers; i++) {
+    const inp = document.getElementById('p-' + i);
+    const nm  = inp ? inp.value.trim() : '';
+    const gi  = Math.floor(i / Math.ceil(nPlayers / nGroups));
+    players.push({
+      id:    i,
+      name:  nm || `Peserta ${i + 1}`,
+      group: gi,
+      color: GROUP_COLORS[gi % GROUP_COLORS.length]
+    });
+  }
+
+  // Buat grup dan jadwal match per grup
+  const groups = [];
+  for (let g = 0; g < nGroups; g++) {
+    const gPlayers = players.filter(p => p.group === g).map(p => p.id);
+    let matches = [];
+
+    if (selectedMethod === 'roundrobin') {
+      const rounds = generateRoundRobin(gPlayers);
+      rounds.forEach((round, ri) => {
+        round.forEach(([h, a]) => {
+          matches.push({ id: `g${g}_m${matches.length}`, babak: ri + 1, home: h, away: a, hs: null, as: null });
+        });
+      });
+
+    } else if (selectedMethod === 'homeaway') {
+      // Home & Away = dua kali round robin, dengan pasangan dibalik di set kedua
+      const rounds = generateRoundRobin(gPlayers);
+      rounds.forEach((round, ri) => {
+        round.forEach(([h, a]) => {
+          matches.push({ id: `g${g}_m${matches.length}`, babak: ri * 2 + 1, home: h, away: a, hs: null, as: null });
+          matches.push({ id: `g${g}_m${matches.length}`, babak: ri * 2 + 2, home: a, away: h, hs: null, as: null });
+        });
+      });
+
+    }
+    // Eliminasi: tidak ada jadwal grup, langsung ke bracket
+
+    groups.push({ id: g, players: gPlayers, matches, qualify });
+  }
+
+  // Buat bracket eliminasi
+  let bracket;
+  if (selectedMethod === 'elimination') {
+    // Bracket langsung dari semua peserta
+    bracket = buildBracket(players.map(p => p.id));
+  } else {
+    // Bracket untuk fase knockout setelah grup (slot diisi setelah grup selesai)
+    const qualifiedSlots = nGroups * qualify;
+    bracket = buildBracket(Array(qualifiedSlots).fill(null));
+  }
+
+  // Simpan ke state global
+  T = {
+    name,
+    method: selectedMethod,
+    elimMode,
+    players,
+    groups,
+    bracket,
+    created: Date.now()
+  };
+
+  save();
+  renderAll();
+  showToast('Turnamen berhasil dibuat! 🎉');
+  // Pindah ke halaman Klasemen
+  showPage('standings', document.querySelectorAll('.nav-tab')[1]);
+}
+
+/*
+  ── SEKSI I: HITUNG KLASEMEN ─────────────────────────────────────────
+  Fungsi ini menelusuri semua match dalam satu grup dan menghitung
+  statistik setiap peserta: MP, W, D, L, GF, GA, PTS.
+
+  Rumus poin: Menang = 3, Seri = 1, Kalah = 0 (sistem poin FIFA)
+  Sortir: PTS → SG (selisih gol) → GF (gol dicetak)
+*/
+function computeStandings(group) {
+  // Inisialisasi statistik kosong untuk setiap peserta
+  const stats = {};
+  group.players.forEach(pid => {
+    stats[pid] = { mp: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+  });
+
+  // Iterasi semua match yang sudah ada skornya
+  group.matches.forEach(m => {
+    if (m.hs === null || m.as === null) return; // Skip jika belum ada skor
+    const h = stats[m.home];
+    const a = stats[m.away];
+
+    // Update statistik kedua tim
+    h.mp++; a.mp++;
+    h.gf += m.hs; h.ga += m.as;
+    a.gf += m.as; a.ga += m.hs;
+
+    if (m.hs > m.as)      { h.w++; h.pts += 3; a.l++; }        // Home menang
+    else if (m.hs < m.as) { a.w++; a.pts += 3; h.l++; }        // Away menang
+    else                  { h.d++; a.d++; h.pts += 1; a.pts += 1; } // Seri
+  });
+
+  // Konversi ke array dan sortir
+  return group.players
+    .map(pid => ({ pid, ...stats[pid], gd: stats[pid].gf - stats[pid].ga }))
+    .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+}
+
+/*
+  Helper: ambil nama peserta berdasarkan ID
+  Mengembalikan 'TBD' jika ID null atau tidak ditemukan.
+*/
+function pName(pid) {
+  if (pid === null || pid === undefined || !T) return 'TBD';
+  const p = T.players.find(x => x.id === pid);
+  return p ? p.name : 'TBD';
+}
+
+function pColor(pid) {
+  if (pid === null || !T) return '#94a3b8';
+  const p = T.players.find(x => x.id === pid);
+  return p ? p.color : '#94a3b8';
+}
+
+/*
+  ── SEKSI J: RENDER SEMUA HALAMAN ────────────────────────────────────
+  renderAll() dipanggil setiap kali data berubah (generate, simpan skor, dst).
+*/
+function renderAll() {
+  renderStandings();
+  renderBracket();
+}
+
+/*
+  ── SEKSI K: RENDER HALAMAN KLASEMEN ─────────────────────────────────
+  Membangun HTML klasemen dan jadwal match secara dinamis dari data T.
+  innerHTML = ... adalah cara menyuntikkan HTML ke dalam elemen.
+  Template literal (`...${var}...`) memudahkan penggabungan string + variabel.
+*/
+function renderStandings() {
+  if (!T) return;
+  const con = document.getElementById('standings-content');
+
+  // Hitung progress keseluruhan
+  const totalM  = T.groups.reduce((a, g) => a + g.matches.length, 0);
+  const playedM = T.groups.reduce((a, g) => a + g.matches.filter(m => m.hs !== null).length, 0);
+  const pct     = totalM ? Math.round(playedM / totalM * 100) : 0;
+  const methodLabel = { roundrobin: 'Round Robin', homeaway: 'Home & Away', elimination: 'Eliminasi' }[T.method];
+
+  let html = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <span style="font-weight:800;font-size:16px">${T.name}</span>
+        <span class="tag tag-sky">${methodLabel}</span>
+      </div>
+      <div style="font-size:11px;color:var(--gray-400);margin-bottom:6px">${playedM} / ${totalM} match selesai</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+
+  // Render setiap grup
+  T.groups.forEach((group, gi) => {
+    const col       = GROUP_COLORS[gi % GROUP_COLORS.length];
+    const standings = computeStandings(group);
+    const babaks    = [...new Set(group.matches.map(m => m.babak))].sort((a, b) => a - b);
+
+    html += `<div class="card">
+      <div class="group-header-row">
+        <span class="tag" style="background:${col}22;color:${col};border:1px solid ${col}55">
+          Grup ${String.fromCharCode(65 + gi)}
+        </span>
+        <div style="display:flex;gap:6px">
+          <button class="btn-sm btn-gold" onclick="exportGroupPDF(${gi})" title="Export grup ini ke PDF">📄 PDF</button>
+        </div>
+      </div>
+
+      <div class="section-label">Klasemen</div>
+      <table>
+        <thead><tr>
+          <th>#</th>
+          <th class="col-name">Nama</th>
+          <th title="Match Played - Total main">MP</th>
+          <th title="Win - Menang">W</th>
+          <th title="Draw - Seri">D</th>
+          <th title="Loss - Kalah">L</th>
+          <th title="Goal For - Gol dicetak">GF</th>
+          <th title="Goal Against - Gol kemasukan">GA</th>
+          <th title="Goal Difference - Selisih gol">SG</th>
+          <th title="Points - Total poin">PTS</th>
+        </tr></thead>
+        <tbody>`;
+
+    standings.forEach((row, ri) => {
+      const rkClass = ri === 0 ? 'rank-1' : ri === 1 ? 'rank-2' : 'rank-other';
+      const gdTxt   = row.gd > 0 ? `+${row.gd}` : `${row.gd}`;
+      const gdCol   = row.gd > 0 ? 'var(--green)' : row.gd < 0 ? 'var(--red)' : 'var(--gray-400)';
+      const isLolos = ri < group.qualify;
+
+      html += `<tr class="${isLolos ? 'lolos' : ''}">
+        <td><span class="rank-badge ${rkClass}">${ri + 1}</span></td>
+        <td class="col-name" style="color:${col}">${pName(row.pid)}</td>
+        <td>${row.mp}</td><td>${row.w}</td><td>${row.d}</td><td>${row.l}</td>
+        <td>${row.gf}</td><td>${row.ga}</td>
+        <td style="color:${gdCol};font-weight:600">${gdTxt}</td>
+        <td class="pts-cell" style="color:${col}">${row.pts}</td>
+      </tr>`;
+    });
+
+    html += `</tbody></table>
+      <p style="font-size:9px;color:var(--gray-400);margin-top:5px">
+        ▌ = Lolos &nbsp;·&nbsp; MP=Main W=Menang D=Seri L=Kalah SG=Selisih Gol PTS=Poin
+      </p>
+
+      <div class="section-label" style="margin-top:14px">Jadwal Pertandingan</div>
+      <div class="match-list">`;
+
+    // Render match per babak
+    babaks.forEach(b => {
+      html += `<div class="babak-label">Babak ${b}</div>`;
+      group.matches.filter(m => m.babak === b).forEach(m => {
+        const played = m.hs !== null;
+        const hWin   = played && m.hs > m.as;
+        const aWin   = played && m.as > m.hs;
+        const scoreBox = played
+          ? `<div class="match-score-box played">${m.hs} : ${m.as}</div>`
+          : `<div class="match-score-box"><span class="match-vs">VS</span></div>`;
+
+        html += `<div class="match-item">
+          <span class="match-home ${hWin ? 'match-win' : ''}">${pName(m.home)}</span>
+          ${scoreBox}
+          <span class="match-away ${aWin ? 'match-win' : ''}">${pName(m.away)}</span>
+          <div class="match-actions">
+            <button class="btn-icon btn-edit-match" title="Edit skor"
+              onclick="openScoreModal(${gi},'${m.id}','group')">✏️</button>
+            ${played
+              ? `<button class="btn-icon btn-reset-match" title="Reset skor ini"
+                  onclick="resetMatchScore(${gi},'${m.id}')">↺</button>`
+              : ''}
+          </div>
+        </div>`;
+      });
+    });
+
+    html += `</div></div>`;
+  });
+
+  con.innerHTML = html;
+}
+
+/*
+  ── SEKSI L: RENDER BRACKET ───────────────────────────────────────────
+  Membuat tampilan bracket eliminasi secara visual dari kiri (R1) ke kanan (Final).
+  Label round dibalik agar "Final" ada di paling kanan.
+*/
+function renderBracket() {
+  if (!T || !T.bracket) return;
+  const con = document.getElementById('bracket-content');
+  const { rounds } = T.bracket;
+
+  // Label nama babak, dari yang terakhir ke yang pertama
+  const roundNames = ['Final', 'Semi-Final', 'Perempat Final', '8 Besar', '16 Besar', '32 Besar', '64 Besar'];
+
+  let html = `<div class="card">
+    <div class="card-title"><span class="dot"></span>Bracket Eliminasi</div>
+    <div class="bracket-scroll"><div class="bracket-flex">`;
+
+  rounds.forEach((round, ri) => {
+    // Label: round ke-1 = nama paling akhir (Final paling kanan)
+    const labelIdx = rounds.length - 1 - ri;
+    const label    = roundNames[labelIdx] || `Babak ${round.round}`;
+
+    html += `<div class="bracket-col">
+      <div class="bracket-col-label">${label}</div>`;
+
+    round.matches.forEach(m => {
+      const hName  = pName(m.home);
+      const aName  = pName(m.away);
+      const hTbd   = m.home === null;
+      const aTbd   = m.away === null;
+      const hWin   = m.winner === m.home && m.home !== null;
+      const aWin   = m.winner === m.away && m.away !== null;
+      const canPlay = !hTbd && !aTbd;
+
+      html += `<div class="bracket-match-box ${canPlay ? 'has-players' : ''}"
+          onclick="${canPlay ? `openScoreModal(${ri},'${m.id}','bracket')` : ''}">
+        <div class="bracket-player-row ${hWin ? 'is-winner' : ''} ${hTbd ? 'is-tbd' : ''}">
+          <span>${hName}</span>
+          <span class="bracket-score">${m.hs !== null ? m.hs : ''}</span>
+        </div>
+        <div class="bracket-player-row ${aWin ? 'is-winner' : ''} ${aTbd ? 'is-tbd' : ''}">
+          <span>${aName}</span>
+          <span class="bracket-score">${m.as !== null ? m.as : ''}</span>
+        </div>
+      </div>`;
+    });
+
+    html += `</div>`;
+    // Tambahkan konektor antar kolom (kecuali setelah kolom terakhir)
+    if (ri < rounds.length - 1) {
+      html += `<div class="bracket-connector">›</div>`;
+    }
+  });
+
+  html += `</div></div></div>`;
+  con.innerHTML = html;
+}
+
+/*
+  ── SEKSI M: MODAL INPUT SKOR ─────────────────────────────────────────
+  openScoreModal: buka popup input skor untuk sebuah match.
+  Parameter:
+    - refId: index grup (jika type='group') atau index round (jika type='bracket')
+    - matchId: ID string match yang unik
+    - type: 'group' atau 'bracket'
+*/
+function openScoreModal(refId, matchId, type) {
+  let match;
+  if (type === 'group') {
+    match = T.groups[refId].matches.find(m => m.id === matchId);
+  } else {
+    match = T.bracket.rounds[refId].matches.find(m => m.id === matchId);
+  }
+  if (!match) return;
+
+  // Simpan konteks untuk digunakan saat tombol "Simpan" diklik
+  modalCtx = { refId, matchId, type };
+
+  document.getElementById('modal-title').textContent    = `${pName(match.home)}  vs  ${pName(match.away)}`;
+  document.getElementById('modal-home-name').textContent = pName(match.home);
+  document.getElementById('modal-away-name').textContent = pName(match.away);
+  document.getElementById('modal-hs').value = match.hs ?? 0;
+  document.getElementById('modal-as').value = match.as ?? 0;
+  document.getElementById('score-modal').classList.add('open');
+  document.getElementById('modal-hs').focus();
+}
+
+function closeScoreModal() {
+  document.getElementById('score-modal').classList.remove('open');
+  modalCtx = null;
+}
+
+// Tutup modal jika klik di luar kotak modal (di area gelap)
+function handleModalBgClick(e) {
+  if (e.target.id === 'score-modal') closeScoreModal();
+}
+
+/*
+  saveScore: ambil nilai dari input modal, update data match, simpan, render ulang.
+  Jika bracket + ada pemenang + mode otomatis → pemenang digeser ke round berikutnya.
+*/
+function saveScore() {
+  if (!modalCtx) return;
+  const hs = parseInt(document.getElementById('modal-hs').value) || 0;
+  const as_ = parseInt(document.getElementById('modal-as').value) || 0;
+  const { refId, matchId, type } = modalCtx;
+
+  if (type === 'group') {
+    const m = T.groups[refId].matches.find(m => m.id === matchId);
+    m.hs = hs; m.as = as_;
+
+  } else { // bracket
+    const round = T.bracket.rounds[refId];
+    const m     = round.matches.find(m => m.id === matchId);
+    m.hs     = hs;
+    m.as     = as_;
+    m.winner = hs > as_ ? m.home : as_ > hs ? m.away : null;
+
+    // Otomatis pindahkan pemenang ke match berikutnya (jika mode auto)
+    if (m.winner !== null && T.elimMode === 'auto' && T.bracket.rounds[refId + 1]) {
+      const nextRound  = T.bracket.rounds[refId + 1];
+      const matchIndex = round.matches.indexOf(m);
+      const nextMatch  = nextRound.matches[Math.floor(matchIndex / 2)];
+      if (matchIndex % 2 === 0) nextMatch.home = m.winner;
+      else                      nextMatch.away = m.winner;
+    }
+  }
+
+  closeScoreModal();
+  save();
+  renderAll();
+  showToast('Skor disimpan ✓');
+}
+
+/*
+  ── SEKSI N: RESET SKOR ───────────────────────────────────────────────
+  Menghapus skor satu match agar kembali ke status "belum main".
+  Klasemen akan otomatis terupdate karena dihitung ulang dari semua match.
+  Tidak ada "jejak" — data skor benar-benar dihapus (bukan di-0-kan).
+*/
+function resetMatchScore(gi, matchId) {
+  if (!confirm('Reset skor pertandingan ini? Skor akan dihapus dan klasemen diperbarui.')) return;
+  const m = T.groups[gi].matches.find(m => m.id === matchId);
+  if (!m) return;
+  m.hs = null;  // null = belum ada skor (berbeda dengan 0 yang berarti skor 0)
+  m.as = null;
+  save();
+  renderAll();
+  showToast('Skor direset ✓');
+}
+
+/*
+  ── SEKSI O: READ-ONLY MODE ───────────────────────────────────────────
+  Jika halaman dibuka via share link, semua tombol edit disembunyikan.
+*/
+function setReadOnlyMode(isReadOnly) {
+  if (!isReadOnly) return;
+  // Sembunyikan tab Setup dan tombol aksi
+  const tabs = document.querySelectorAll('.nav-tab');
+  tabs[0].style.display = 'none'; // Tab Setup
+  document.querySelector('.nav-actions').innerHTML =
+    '<span class="tag tag-gold">👁 Mode Lihat</span>';
+}
+
+/*
+  ── SEKSI P: SHARE LINK (DATA DI URL) ────────────────────────────────
+  Cara kerja:
+  1. Data T dikonversi ke JSON string
+  2. JSON di-encode ke Base64 (format teks yang aman untuk URL)
+  3. Base64 dijadikan query parameter: ?d=BASE64STRING
+  4. Siapapun yang membuka URL ini akan mendapat data yang sama
+
+  Keterbatasan: URL browser biasanya maks ~8000 karakter.
+  Untuk data besar, pakai Export JSON.
+*/
+function openShareModal() {
+  if (!T) { showToast('Buat turnamen dulu!'); return; }
+
+  try {
+    const json   = JSON.stringify(T);
+    // btoa = encode ke Base64, encodeURIComponent = escape karakter khusus di URL
+    const b64    = btoa(unescape(encodeURIComponent(json)));
+    const url    = `${location.origin}${location.pathname}?d=${b64}`;
+
+    document.getElementById('share-url-text').value = url;
+    document.getElementById('share-modal').classList.add('open');
+  } catch(e) {
+    showToast('Gagal membuat link — data terlalu besar, coba Export JSON');
+  }
+}
+
+function closeShareModal() {
+  document.getElementById('share-modal').classList.remove('open');
+}
+
+function handleShareBgClick(e) {
+  if (e.target.id === 'share-modal') closeShareModal();
+}
+
+function copyShareLink() {
+  const txt = document.getElementById('share-url-text').value;
+  navigator.clipboard.writeText(txt)
+    .then(() => showToast('Link disalin! 🔗'))
+    .catch(() => {
+      document.getElementById('share-url-text').select();
+      document.execCommand('copy');
+      showToast('Link disalin!');
+    });
+}
+
+/*
+  getDataFromURL: baca data dari URL parameter ?d=...
+  Dipanggil saat halaman pertama kali dimuat.
+*/
+function getDataFromURL() {
+  const params = new URLSearchParams(location.search);
+  const d = params.get('d');
+  if (!d) return null;
+  try {
+    const json = decodeURIComponent(escape(atob(d))); // Kebalikan dari encode
+    return JSON.parse(json);
+  } catch(e) {
+    console.error('Gagal decode URL data:', e);
+    return null;
+  }
+}
+
+/*
+  ── SEKSI Q: EXPORT PDF ───────────────────────────────────────────────
+  window.print() membuka dialog cetak browser.
+  CSS @media print di atas sudah mengatur apa saja yang tampil di PDF.
+  Tips: di dialog cetak, pilih "Save as PDF" sebagai printer.
+*/
+function exportPDF() {
+  if (!T) { showToast('Buat turnamen dulu!'); return; }
+  // Pastikan halaman Klasemen aktif sebelum print
+  showPage('standings', document.querySelectorAll('.nav-tab')[1]);
+  setTimeout(() => window.print(), 300);
+}
+
+function exportGroupPDF(gi) {
+  showPage('standings', document.querySelectorAll('.nav-tab')[1]);
+  setTimeout(() => window.print(), 300);
+}
+
+/*
+  ── SEKSI R: EXPORT / IMPORT JSON ────────────────────────────────────
+  Export: konversi data ke string JSON → download sebagai file .json
+  Import: user pilih file .json → baca → parse → muat ke T
+*/
+function exportJSON() {
+  if (!T) { showToast('Belum ada data!'); return; }
+  const blob = new Blob([JSON.stringify(T, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `tourney_${(T.name || 'data').replace(/\s+/g, '_')}_${Date.now()}.json`;
+  a.click();
+  showToast('File JSON berhasil diunduh ✓');
+}
+
+function triggerImport() {
+  document.getElementById('file-input').click();
+}
+
+function handleImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      T = JSON.parse(ev.target.result);
+      save();
+      rebuildPlayerInputs();
+      renderAll();
+      showToast('Data berhasil diimport ✓');
+    } catch(err) {
+      showToast('⚠️ File tidak valid!');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = ''; // Reset input agar file sama bisa diimport ulang
+}
+
+/*
+  ── SEKSI S: SIMPAN KE LOCALSTORAGE ──────────────────────────────────
+  localStorage.setItem(key, value) menyimpan string ke browser storage.
+  JSON.stringify mengubah objek JavaScript ke string JSON.
+  Data tetap ada sampai: dibersihkan manual, clear cache, atau private mode.
+*/
+function save() {
+  if (T) localStorage.setItem('tourney_v2', JSON.stringify(T));
+}
+
+/*
+  ── SEKSI T: GOOGLE FORM EMBED ────────────────────────────────────────
+  Fungsi ini mengambil URL yang diinput pengguna dan menyuntikkannya
+  ke dalam elemen <iframe> sebagai src.
+
+  URL Google Form untuk embed harus dalam format:
+  https://docs.google.com/forms/d/e/XXXX/viewform?embedded=true
+
+  Jika URL tidak mengandung "embedded=true", tambahkan otomatis.
+*/
+function updateGFormEmbed() {
+  let url = document.getElementById('gform-url').value.trim();
+  if (!url) {
+    document.getElementById('gform-embed-wrap').style.display = 'none';
+    document.getElementById('gform-placeholder').style.display = 'block';
+    return;
+  }
+
+  // Pastikan URL mengandung parameter embedded=true
+  if (!url.includes('embedded=true')) {
+    url += (url.includes('?') ? '&' : '?') + 'embedded=true';
+  }
+
+  document.getElementById('gform-iframe').src = url;
+  document.getElementById('gform-embed-wrap').style.display = 'block';
+  document.getElementById('gform-placeholder').style.display = 'none';
+
+  // Simpan URL GForm ke localStorage agar tidak hilang saat refresh
+  localStorage.setItem('tourney_gform_url', url);
+}
+
+/*
+  ── SEKSI U: TOAST NOTIFIKASI ────────────────────────────────────────
+  Menampilkan pesan singkat selama 2.5 detik, lalu hilang otomatis.
+  setTimeout = fungsi yang berjalan setelah delay tertentu (milidetik).
+*/
+
+
+/*
+  ════════════════════════════════════════════════════════
+  SEKSI V: SISTEM PASSWORD GATE
+  ════════════════════════════════════════════════════════
+  Password disimpan di localStorage (bukan hardcode) agar bisa
+  diganti tanpa edit file. Pertama kali, password default dipakai.
+
+  PENTING: Ini adalah keamanan tingkat dasar — cocok untuk membatasi
+  akses kasual. Bukan enkripsi tingkat tinggi. Untuk keamanan lebih,
+  butuh backend server.
+
+  Cara kerja:
+  1. Saat halaman dimuat, cek localStorage apakah sudah pernah login
+     (session disimpan sementara di sessionStorage).
+  2. Jika belum → tampilkan layar password gate.
+  3. Jika benar → sembunyikan gate, tampilkan konten.
+*/
+
+/*
+  DEFAULT PASSWORD — ganti string ini jika ingin password berbeda
+  saat pertama kali dipakai (sebelum ada yang di-set via Settings).
+  Format: string teks biasa.
+*/
+const TOURNEY_DEFAULT_PASSWORD = 'tourney2025';
+
+function getStoredPassword() {
+  // Ambil password dari localStorage, fallback ke default jika belum ada
+  return localStorage.getItem('tourney_password') || TOURNEY_DEFAULT_PASSWORD;
+}
+
+function checkPassword() {
+  const input = document.getElementById('gate-pw-input').value;
+  const errEl = document.getElementById('gate-err');
+  const inputEl = document.getElementById('gate-pw-input');
+
+  if (input === getStoredPassword()) {
+    // Password benar — simpan status login di sessionStorage
+    // sessionStorage = hilang saat tab/browser ditutup (berbeda dengan localStorage)
+    sessionStorage.setItem('tourney_auth', '1');
+    document.getElementById('password-gate').style.display = 'none';
+    errEl.textContent = '';
+  } else {
+    // Password salah — tampilkan pesan error dan efek getar
+    errEl.textContent = '❌ Password salah. Coba lagi.';
+    inputEl.classList.add('error');
+    inputEl.value = '';
+    setTimeout(() => inputEl.classList.remove('error'), 400);
+  }
+}
+
+function toggleGatePw() {
+  // Toggle tampil/sembunyikan karakter password
+  const inp = document.getElementById('gate-pw-input');
+  const eye = document.getElementById('gate-pw-eye');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    eye.textContent = '🙈';
+  } else {
+    inp.type = 'password';
+    eye.textContent = '👁';
+  }
+}
+
+function initPasswordGate() {
+  /*
+    Cek apakah sudah login di session ini.
+    Jika sudah → langsung sembunyikan gate.
+    Jika belum → tampilkan gate dan fokus ke input.
+  */
+  if (sessionStorage.getItem('tourney_auth') === '1') {
+    document.getElementById('password-gate').style.display = 'none';
+  } else {
+    document.getElementById('password-gate').style.display = 'flex';
+    setTimeout(() => document.getElementById('gate-pw-input').focus(), 100);
+  }
+}
+
+/*
+  ════════════════════════════════════════════════════════
+  SEKSI W: SETTINGS MODAL (Logo + Password)
+  ════════════════════════════════════════════════════════
+*/
+function openSettings() {
+  document.getElementById('settings-modal').classList.add('open');
+}
+function closeSettings() {
+  document.getElementById('settings-modal').classList.remove('open');
+  document.getElementById('pw-change-msg').textContent = '';
+}
+function handleSettingsBgClick(e) {
+  if (e.target.id === 'settings-modal') closeSettings();
+}
+
+/*
+  handleLogoUpload: membaca file gambar yang dipilih pengguna,
+  mengkonversinya ke format Data URL (base64 string), lalu:
+  1. Menyimpannya ke localStorage
+  2. Mengupdate semua elemen img logo di halaman secara realtime
+*/
+function handleLogoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const dataUrl = ev.target.result; // Format: "data:image/png;base64,..."
+    localStorage.setItem('tourney_logo', dataUrl);
+    applyLogo(dataUrl);
+    showToast('Logo berhasil diperbarui ✓');
+  };
+  reader.readAsDataURL(file); // Baca file sebagai Data URL (base64)
+}
+
+function applyLogo(src) {
+  /*
+    Update semua elemen img logo sekaligus:
+    - #nav-logo-img    → logo di navbar
+    - #gate-logo-img   → logo di layar password
+    - #settings-logo-preview-img → preview di modal settings
+    - body ::before    → logo sebagai background watermark (via CSS variable)
+  */
+  ['nav-logo-img', 'gate-logo-img', 'settings-logo-preview-img'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.src = src; el.style.display = 'block'; }
+  });
+  /*
+    CSS variable --bg-logo-url diset di sini dan dipakai oleh body::before.
+    Ini cara aman untuk inject URL gambar ke CSS dari JavaScript.
+  */
+  document.documentElement.style.setProperty('--bg-logo-url', `url('${src}')`);
+}
+
+function initLogo() {
+  // Saat halaman dimuat, cek apakah ada logo yang tersimpan di localStorage
+  const saved = localStorage.getItem('tourney_logo');
+  if (saved) {
+    applyLogo(saved);
+  } else {
+    /*
+      Jika belum ada logo tersimpan, coba pakai gambar default dari file.
+      Logo file eksternal tidak bisa langsung dijadikan CSS background
+      melalui JavaScript jika file belum di-upload, jadi ini sebagai fallback.
+      Setelah user upload logo via Settings, ini akan tergantikan.
+    */
+    document.documentElement.style.setProperty(
+      '--bg-logo-url', "url('Logo Roundrabbit.png')"
+    );
+  }
+}
+
+function changePassword() {
+  const current = document.getElementById('pw-current').value;
+  const newPw   = document.getElementById('pw-new').value;
+  const confirm = document.getElementById('pw-confirm').value;
+  const msg     = document.getElementById('pw-change-msg');
+
+  if (current !== getStoredPassword()) {
+    msg.style.color = 'var(--red)'; msg.textContent = '❌ Password saat ini salah'; return;
+  }
+  if (newPw.length < 4) {
+    msg.style.color = 'var(--red)'; msg.textContent = '❌ Password baru minimal 4 karakter'; return;
+  }
+  if (newPw !== confirm) {
+    msg.style.color = 'var(--red)'; msg.textContent = '❌ Konfirmasi password tidak cocok'; return;
+  }
+
+  localStorage.setItem('tourney_password', newPw);
+  msg.style.color = 'var(--green)'; msg.textContent = '✓ Password berhasil diubah';
+  document.getElementById('pw-current').value = '';
+  document.getElementById('pw-new').value = '';
+  document.getElementById('pw-confirm').value = '';
+  showToast('Password diperbarui ✓');
+}
+
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
