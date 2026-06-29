@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Tourney Generator By Roundrabbit</title>
+<style>
+  /* ── TOKENS ─────────────────────────────────────────────── */
+  :root{
+    --sky:#38bdf8;--sky-dark:#0284c7;--sky-light:#e0f2fe;--sky-pale:#f0f9ff;
+    --gold:#f59e0b;--gold-dark:#d97706;--gold-light:#fef3c7;
+    --white:#ffffff;--gray-50:#f8fafc;--gray-100:#f1f5f9;
+    --gray-200:#e2e8f0;--gray-400:#94a3b8;--gray-600:#475569;--gray-800:#1e293b;
+    --green:#22c55e;--red:#ef4444;--orange:#f97316;
+    --radius:12px;--radius-lg:20px;--radius-sm:8px;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
+    --shadow-lg:0 8px 32px rgba(0,0,0,.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--gray-50);color:var(--gray-800);min-height:100vh}
+  button{font-family:inherit;cursor:pointer;border:none;outline:none}
+  input,select{font-family:inherit;outline:none}
+
+  /* ── NAV ─────────────────────────────────────────────────── */
+  nav{
+    background:var(--white);border-bottom:2px solid var(--sky-light);
+    padding:0 24px;display:flex;align-items:center;
+    justify-content:space-between;height:60px;position:sticky;top:0;z-index:50;
+    box-shadow:0 2px 8px rgba(56,189,248,.1);
+  }
+  .nav-logo{display:flex;align-items:center;gap:10px}
+  .nav-logo .icon{
+    width:36px;height:36px;border-radius:10px;
+    background:linear-gradient(135deg,var(--sky),var(--sky-dark));
+    display:flex;align-items:center;justify-content:center;font-size:18px;
+  }
+  .nav-logo span{font-weight:800;font-size:18px;letter-spacing:-.03em;
+    background:linear-gradient(90deg,var(--sky-dark),var(--gold-dark));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .nav-tabs{display:flex;gap:2px;background:var(--gray-100);border-radius:10px;padding:3px}
+  .nav-tab{
+    padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;
+    color:var(--gray-600);background:transparent;border:none;cursor:pointer;
+    transition:all .2s;
+  }
+  .nav-tab.active{background:var(--white);color:var(--sky-dark);box-shadow:var(--shadow)}
+  .nav-actions{display:flex;gap:8px}
+  .btn-sm{
+    padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;
+    transition:all .2s;
+  }
+  .btn-export{background:var(--gold-light);color:var(--gold-dark);border:1px solid var(--gold)}
+  .btn-import{background:var(--sky-light);color:var(--sky-dark);border:1px solid var(--sky)}
+  .btn-export:hover{background:var(--gold);color:#fff}
+  .btn-import:hover{background:var(--sky);color:#fff}
+
+  /* ── PAGES ───────────────────────────────────────────────── */
+  .page{display:none;padding:24px;max-width:900px;margin:0 auto}
+  .page.active{display:block}
+
+  /* ── CARDS ───────────────────────────────────────────────── */
+  .card{background:var(--white);border-radius:var(--radius-lg);padding:24px;
+    box-shadow:var(--shadow);border:1px solid var(--gray-200);margin-bottom:16px}
+  .card-title{font-size:16px;font-weight:700;color:var(--gray-800);margin-bottom:16px;
+    display:flex;align-items:center;gap:8px}
+  .card-title .dot{width:8px;height:8px;border-radius:50%;background:var(--sky)}
+
+  /* ── SETUP PAGE ──────────────────────────────────────────── */
+  .setup-hero{
+    background:linear-gradient(135deg,var(--sky-pale) 0%,var(--gold-light) 100%);
+    border:1px solid var(--sky-light);border-radius:var(--radius-lg);
+    padding:32px;text-align:center;margin-bottom:24px;
+  }
+  .setup-hero h1{font-size:28px;font-weight:900;letter-spacing:-.04em;
+    background:linear-gradient(90deg,var(--sky-dark),var(--gold-dark));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
+  .setup-hero p{color:var(--gray-600);font-size:14px}
+
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .form-group{display:flex;flex-direction:column;gap:6px}
+  .form-group label{font-size:12px;font-weight:700;color:var(--gray-600);letter-spacing:.05em;text-transform:uppercase}
+  .form-group input,.form-group select{
+    padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);
+    font-size:14px;background:var(--white);color:var(--gray-800);
+    transition:border-color .2s;
+  }
+  .form-group input:focus,.form-group select:focus{border-color:var(--sky)}
+
+  .method-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px}
+  .method-card{
+    border:2px solid var(--gray-200);border-radius:var(--radius);padding:16px 12px;
+    text-align:center;cursor:pointer;transition:all .2s;background:var(--white);
+  }
+  .method-card:hover{border-color:var(--sky-light);background:var(--sky-pale)}
+  .method-card.selected{border-color:var(--sky);background:var(--sky-pale);box-shadow:0 0 0 3px rgba(56,189,248,.15)}
+  .method-card .icon{font-size:28px;margin-bottom:8px}
+  .method-card .name{font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:4px}
+  .method-card .desc{font-size:11px;color:var(--gray-400)}
+
+  #players-container{display:flex;flex-direction:column;gap:8px}
+  .player-row{display:flex;gap:8px;align-items:center}
+  .player-num{
+    width:28px;height:28px;border-radius:50%;background:var(--sky-light);
+    color:var(--sky-dark);font-weight:800;font-size:12px;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .player-row input{flex:1;padding:8px 12px;border:1.5px solid var(--gray-200);
+    border-radius:var(--radius-sm);font-size:13px}
+  .player-row input:focus{border-color:var(--sky)}
+  .player-group-badge{
+    padding:3px 8px;border-radius:999px;font-size:10px;font-weight:700;
+    flex-shrink:0;
+  }
+
+  .btn-primary{
+    width:100%;padding:14px;border-radius:var(--radius);font-size:15px;font-weight:800;
+    background:linear-gradient(135deg,var(--sky),var(--sky-dark));color:#fff;
+    box-shadow:0 4px 16px rgba(56,189,248,.4);border:none;cursor:pointer;
+    transition:all .2s;letter-spacing:.02em;
+  }
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(56,189,248,.5)}
+  .btn-primary:active{transform:translateY(0)}
+
+  .elim-mode{display:flex;gap:8px;margin-top:4px}
+  .elim-btn{
+    flex:1;padding:10px;border-radius:var(--radius-sm);font-size:12px;font-weight:700;
+    border:2px solid var(--gray-200);background:var(--white);color:var(--gray-600);
+    cursor:pointer;transition:all .2s;
+  }
+  .elim-btn.active{border-color:var(--sky);background:var(--sky-pale);color:var(--sky-dark)}
+
+  /* ── STANDINGS ───────────────────────────────────────────── */
+  .group-header{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:12px;
+  }
+  .group-badge{
+    padding:4px 14px;border-radius:999px;font-size:12px;font-weight:800;
+    letter-spacing:.06em;
+  }
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead tr{background:var(--gray-50)}
+  th{padding:8px 10px;text-align:center;font-size:10px;font-weight:700;
+    color:var(--gray-400);letter-spacing:.1em;border-bottom:2px solid var(--gray-200)}
+  th:nth-child(2){text-align:left}
+  td{padding:9px 10px;text-align:center;border-bottom:1px solid var(--gray-100)}
+  td:nth-child(2){text-align:left;font-weight:600}
+  tr:last-child td{border-bottom:none}
+  tr.lolos td:first-child{border-left:3px solid var(--sky)}
+  tr:not(.lolos) td:first-child{border-left:3px solid transparent}
+  .pts-cell{font-weight:800;font-size:15px}
+  .gd-pos{color:var(--green)}
+  .gd-neg{color:var(--red)}
+  .rank-badge{
+    display:inline-flex;width:22px;height:22px;border-radius:50%;
+    align-items:center;justify-content:center;font-size:11px;font-weight:800;
+  }
+  .rank-1{background:var(--gold);color:#fff}
+  .rank-2{background:var(--sky);color:#fff}
+  .rank-other{background:var(--gray-100);color:var(--gray-600)}
+
+  /* ── MATCHES ─────────────────────────────────────────────── */
+  .match-item{
+    display:flex;align-items:center;padding:10px 14px;
+    border-bottom:1px solid var(--gray-100);cursor:pointer;
+    transition:background .15s;border-radius:var(--radius-sm);
+  }
+  .match-item:hover{background:var(--sky-pale)}
+  .match-item:last-child{border-bottom:none}
+  .match-home,.match-away{flex:1;font-size:13px;font-weight:600;color:var(--gray-800)}
+  .match-home{text-align:right}
+  .match-score{
+    min-width:80px;text-align:center;margin:0 10px;
+    border-radius:var(--radius-sm);padding:5px 10px;
+    background:var(--gray-100);font-size:15px;font-weight:800;
+    letter-spacing:2px;color:var(--gray-800);
+    border:1.5px solid var(--gray-200);
+  }
+  .match-score.played{background:var(--sky-pale);border-color:var(--sky);color:var(--sky-dark)}
+  .match-vs{color:var(--gray-400);font-size:11px;font-weight:700}
+  .match-edit{color:var(--gray-400);font-size:12px;margin-left:6px}
+  .babak-label{
+    padding:6px 14px;background:var(--gray-100);font-size:10px;font-weight:700;
+    color:var(--gray-400);letter-spacing:.12em;text-transform:uppercase;
+  }
+  .win-name{color:var(--sky-dark)}
+
+  /* ── MODAL ───────────────────────────────────────────────── */
+  .modal-bg{
+    position:fixed;inset:0;background:rgba(15,23,42,.4);
+    display:none;align-items:center;justify-content:center;z-index:200;
+    backdrop-filter:blur(4px);
+  }
+  .modal-bg.open{display:flex}
+  .modal{
+    background:var(--white);border-radius:var(--radius-lg);padding:28px;
+    width:340px;box-shadow:var(--shadow-lg);
+    animation:popIn .25s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+  @keyframes popIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+  .modal-title{font-size:14px;font-weight:700;color:var(--gray-600);margin-bottom:20px;text-align:center}
+  .score-row{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+  .score-side{flex:1;text-align:center}
+  .score-side p{font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:8px}
+  .score-input{
+    width:100%;text-align:center;font-size:32px;font-weight:900;
+    padding:10px;border:2px solid var(--gray-200);border-radius:var(--radius);
+    color:var(--sky-dark);transition:border-color .2s;
+  }
+  .score-input:focus{border-color:var(--sky)}
+  .score-dash{color:var(--gray-300);font-size:24px;font-weight:300}
+  .modal-btns{display:flex;gap:8px}
+  .btn-cancel{
+    flex:1;padding:10px;border-radius:var(--radius-sm);
+    background:var(--gray-100);color:var(--gray-600);font-weight:700;font-size:13px;border:none;
+  }
+  .btn-save{
+    flex:2;padding:10px;border-radius:var(--radius-sm);
+    background:linear-gradient(135deg,var(--sky),var(--sky-dark));
+    color:#fff;font-weight:700;font-size:13px;border:none;
+  }
+  .btn-cancel:hover{background:var(--gray-200)}
+  .btn-save:hover{opacity:.9}
+
+  /* ── BRACKET ─────────────────────────────────────────────── */
+  .bracket-wrap{overflow-x:auto;padding:8px 0 16px}
+  .bracket{display:flex;gap:0;align-items:stretch;min-width:max-content}
+  .bracket-round{display:flex;flex-direction:column;justify-content:space-around;
+    padding:0 8px;min-width:160px}
+  .bracket-round-label{
+    text-align:center;font-size:10px;font-weight:700;letter-spacing:.12em;
+    color:var(--gray-400);padding:6px 0 12px;text-transform:uppercase;
+  }
+  .bracket-match{
+    border:2px solid var(--gray-200);border-radius:var(--radius-sm);
+    background:var(--white);overflow:hidden;margin:4px 0;
+    box-shadow:var(--shadow);
+  }
+  .bracket-match.active-match{border-color:var(--sky)}
+  .bracket-player{
+    padding:7px 10px;font-size:12px;font-weight:600;display:flex;
+    justify-content:space-between;align-items:center;
+  }
+  .bracket-player:first-child{border-bottom:1px solid var(--gray-100)}
+  .bracket-player.winner{background:var(--sky-pale);color:var(--sky-dark);font-weight:800}
+  .bracket-player.tbd{color:var(--gray-400);font-style:italic}
+  .bracket-player .bscore{
+    font-weight:800;font-size:13px;min-width:18px;text-align:right;
+  }
+  .connector{display:flex;align-items:center;justify-content:center;
+    width:20px;color:var(--gray-300);font-size:18px}
+
+  /* ── POLLING ─────────────────────────────────────────────── */
+  .poll-intro{
+    background:linear-gradient(135deg,var(--gold-light),#fff);
+    border:1px solid var(--gold);border-radius:var(--radius-lg);
+    padding:20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;
+  }
+  .poll-intro .trophy{font-size:36px}
+  .poll-intro h3{font-size:16px;font-weight:800;color:var(--gold-dark);margin-bottom:4px}
+  .poll-intro p{font-size:12px;color:var(--gray-600)}
+  .poll-item{
+    display:flex;align-items:center;gap:12px;padding:12px 16px;
+    background:var(--white);border-radius:var(--radius);border:1px solid var(--gray-200);
+    margin-bottom:8px;cursor:pointer;transition:all .2s;
+  }
+  .poll-item:hover{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,158,11,.1)}
+  .poll-item.voted{border-color:var(--gold);background:var(--gold-light)}
+  .poll-item.voted .poll-bar-fill{background:linear-gradient(90deg,var(--gold),var(--gold-dark))}
+  .poll-avatar{
+    width:36px;height:36px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:14px;color:#fff;flex-shrink:0;
+  }
+  .poll-name{font-size:14px;font-weight:700;flex:1}
+  .poll-bar-wrap{height:6px;background:var(--gray-200);border-radius:999px;flex:2;overflow:hidden}
+  .poll-bar-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--sky),var(--sky-dark));transition:width .5s}
+  .poll-pct{font-size:13px;font-weight:800;color:var(--sky-dark);min-width:36px;text-align:right}
+  .poll-votes{font-size:11px;color:var(--gray-400);min-width:50px;text-align:right}
+  .poll-voted-badge{
+    display:inline-flex;align-items:center;gap:4px;
+    background:var(--gold-light);color:var(--gold-dark);
+    font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;
+    border:1px solid var(--gold);
+  }
+
+  /* ── TOAST ───────────────────────────────────────────────── */
+  #toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);
+    background:var(--gray-800);color:#fff;padding:10px 20px;border-radius:999px;
+    font-size:13px;font-weight:600;z-index:300;transition:transform .3s;
+    pointer-events:none;white-space:nowrap;
+  }
+  #toast.show{transform:translateX(-50%) translateY(0)}
+
+  /* ── EMPTY STATE ─────────────────────────────────────────── */
+  .empty{text-align:center;padding:40px 20px;color:var(--gray-400)}
+  .empty .icon{font-size:40px;margin-bottom:12px}
+  .empty p{font-size:14px}
+
+  /* ── RESPONSIVE ──────────────────────────────────────────── */
+  @media(max-width:600px){
+    .form-grid{grid-template-columns:1fr}
+    .method-grid{grid-template-columns:1fr}
+    nav{padding:0 12px}
+    .nav-logo span{font-size:15px}
+    .page{padding:16px}
+  }
+
+  /* ── MISC ────────────────────────────────────────────────── */
+  .section-label{
+    font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--gray-400);
+    text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;
+  }
+  .section-label::after{content:'';flex:1;height:1px;background:var(--gray-200)}
+  .tag{
+    display:inline-block;padding:2px 8px;border-radius:999px;
+    font-size:10px;font-weight:700;letter-spacing:.05em;
+  }
+  .tag-sky{background:var(--sky-light);color:var(--sky-dark)}
+  .tag-gold{background:var(--gold-light);color:var(--gold-dark)}
+  .tag-green{background:#dcfce7;color:#166534}
+  .progress-bar{height:4px;background:var(--gray-200);border-radius:999px;margin-top:6px}
+  .progress-fill{height:100%;border-radius:999px;
+    background:linear-gradient(90deg,var(--sky),var(--gold));transition:width .5s}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <div class="icon">🏆</div>
+    <span>Tourney Generator</span>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('setup')">Setup</button>
+    <button class="nav-tab" onclick="showPage('standings')">Klasemen</button>
+    <button class="nav-tab" onclick="showPage('bracket')">Bracket</button>
+    <button class="nav-tab" onclick="showPage('polling')">Polling</button>
+  </div>
+  <div class="nav-actions">
+    <button class="btn-sm btn-import" onclick="importData()">⬆ Import</button>
+    <button class="btn-sm btn-export" onclick="exportData()">⬇ Export</button>
+  </div>
+</nav>
+
+<!-- PAGES -->
+
+<!-- SETUP -->
+<div id="page-setup" class="page active">
+  <div class="setup-hero">
+    <h1>🏆 Tourney Generator</h1>
+    <p>Buat turnamen kamu sendiri — round robin, home-away, atau eliminasi</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Pengaturan Turnamen</div>
+    <div class="form-grid" style="margin-bottom:16px">
+      <div class="form-group">
+        <label>Nama Turnamen</label>
+        <input id="s-name" type="text" placeholder="Contoh: Liga Ramadhan 2025"/>
+      </div>
+      <div class="form-group">
+        <label>Jumlah Peserta</label>
+        <input id="s-players" type="number" min="2" max="64" value="10" onchange="updatePlayerInputs()"/>
+      </div>
+      <div class="form-group">
+        <label>Jumlah Grup</label>
+        <input id="s-groups" type="number" min="1" max="16" value="2" onchange="updatePlayerInputs()"/>
+      </div>
+      <div class="form-group">
+        <label>Jumlah Lolos per Grup</label>
+        <input id="s-qualify" type="number" min="1" max="4" value="2"/>
+      </div>
+    </div>
+
+    <div class="section-label">Metode Turnamen</div>
+    <div class="method-grid" id="method-grid">
+      <div class="method-card selected" onclick="selectMethod('roundrobin',this)">
+        <div class="icon">🔄</div>
+        <div class="name">Round Robin</div>
+        <div class="desc">Semua peserta saling bertemu sekali</div>
+      </div>
+      <div class="method-card" onclick="selectMethod('homeaway',this)">
+        <div class="icon">↔️</div>
+        <div class="name">Home & Away</div>
+        <div class="desc">Bertemu dua kali, kandang & tandang</div>
+      </div>
+      <div class="method-card" onclick="selectMethod('elimination',this)">
+        <div class="icon">⚡</div>
+        <div class="name">Eliminasi</div>
+        <div class="desc">Kalah langsung gugur</div>
+      </div>
+    </div>
+
+    <div id="elim-options" style="display:none;margin-top:12px">
+      <div class="section-label" style="margin-top:8px">Mode Bracket Eliminasi</div>
+      <div class="elim-mode">
+        <button class="elim-btn active" id="elim-auto" onclick="setElimMode('auto')">⚡ Otomatis</button>
+        <button class="elim-btn" id="elim-manual" onclick="setElimMode('manual')">✋ Manual</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--gold)"></span>Daftar Peserta</div>
+    <div id="players-container"></div>
+  </div>
+
+  <button class="btn-primary" onclick="generateTournament()">🚀 Generate Turnamen</button>
+  <div style="height:24px"></div>
+</div>
+
+<!-- STANDINGS -->
+<div id="page-standings" class="page">
+  <div id="standings-content">
+    <div class="empty"><div class="icon">📊</div><p>Belum ada turnamen. Setup dulu di tab Setup.</p></div>
+  </div>
+</div>
+
+<!-- BRACKET -->
+<div id="page-bracket" class="page">
+  <div id="bracket-content">
+    <div class="empty"><div class="icon">🪜</div><p>Belum ada turnamen. Setup dulu di tab Setup.</p></div>
+  </div>
+</div>
+
+<!-- POLLING -->
+<div id="page-polling" class="page">
+  <div id="polling-content">
+    <div class="empty"><div class="icon">🗳️</div><p>Belum ada turnamen. Setup dulu di tab Setup.</p></div>
+  </div>
+</div>
+
+<!-- SCORE MODAL -->
+<div class="modal-bg" id="score-modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Input Skor</div>
+    <div class="score-row">
+      <div class="score-side">
+        <p id="modal-home">Home</p>
+        <input class="score-input" id="modal-hs" type="number" min="0" value="0"/>
+      </div>
+      <div class="score-dash">—</div>
+      <div class="score-side">
+        <p id="modal-away">Away</p>
+        <input class="score-input" id="modal-as" type="number" min="0" value="0"/>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Batal</button>
+      <button class="btn-save" onclick="saveScore()">Simpan ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+<!-- IMPORT HELPER -->
+<input type="file" id="file-input" accept=".json" style="display:none" onchange="handleImport(event)"/>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let T = null; // tournament state
+let currentMatchRef = null;
+let selectedMethod = 'roundrobin';
+let elimMode = 'auto';
+
+const GROUP_COLORS = [
+  '#38bdf8','#f59e0b','#22c55e','#a78bfa','#f97316','#ef4444','#14b8a6','#ec4899'
+];
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+window.onload = () => {
+  updatePlayerInputs();
+  const saved = localStorage.getItem('tourney_data');
+  if (saved) {
+    try { T = JSON.parse(saved); renderAll(); showToast('Data tersimpan dimuat ✓'); }
+    catch(e) {}
+  }
+};
+
+// ── PAGE NAV ──────────────────────────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── METHOD SELECT ─────────────────────────────────────────────────────────────
+function selectMethod(m, el) {
+  selectedMethod = m;
+  document.querySelectorAll('.method-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('elim-options').style.display = m === 'elimination' ? 'block' : 'none';
+}
+
+function setElimMode(m) {
+  elimMode = m;
+  document.getElementById('elim-auto').classList.toggle('active', m === 'auto');
+  document.getElementById('elim-manual').classList.toggle('active', m === 'manual');
+}
+
+// ── PLAYER INPUTS ─────────────────────────────────────────────────────────────
+function updatePlayerInputs() {
+  const n = parseInt(document.getElementById('s-players').value) || 4;
+  const g = parseInt(document.getElementById('s-groups').value) || 1;
+  const con = document.getElementById('players-container');
+  con.innerHTML = '';
+
+  for (let i = 0; i < n; i++) {
+    const gi = Math.floor(i / Math.ceil(n / g));
+    const col = GROUP_COLORS[gi % GROUP_COLORS.length];
+    const row = document.createElement('div');
+    row.className = 'player-row';
+    row.innerHTML = `
+      <div class="player-num">${i+1}</div>
+      <input type="text" placeholder="Nama peserta ${i+1}" id="p-${i}" value="${T && T.players[i] ? T.players[i].name : ''}"/>
+      <span class="player-group-badge tag" style="background:${col}22;color:${col};border:1px solid ${col}44">Grup ${String.fromCharCode(65+gi)}</span>
+    `;
+    con.appendChild(row);
+  }
+}
+
+// ── ROUND ROBIN GENERATOR ─────────────────────────────────────────────────────
+function genRoundRobin(players) {
+  const rounds = [];
+  const list = [...players];
+  if (list.length % 2 !== 0) list.push(null);
+  const total = list.length;
+  for (let r = 0; r < total - 1; r++) {
+    const round = [];
+    for (let i = 0; i < total / 2; i++) {
+      const h = list[i], a = list[total - 1 - i];
+      if (h !== null && a !== null) round.push([h, a]);
+    }
+    rounds.push(round);
+    const rot = list.slice(1);
+    rot.unshift(rot.pop());
+    list.splice(1, rot.length, ...rot);
+  }
+  return rounds;
+}
+
+// ── GENERATE TOURNAMENT ───────────────────────────────────────────────────────
+function generateTournament() {
+  const name = document.getElementById('s-name').value || 'Turnamen Baru';
+  const nPlayers = parseInt(document.getElementById('s-players').value);
+  const nGroups = parseInt(document.getElementById('s-groups').value);
+  const qualify = parseInt(document.getElementById('s-qualify').value);
+
+  const players = [];
+  for (let i = 0; i < nPlayers; i++) {
+    const inp = document.getElementById('p-' + i);
+    const n = inp ? inp.value.trim() : '';
+    const gi = Math.floor(i / Math.ceil(nPlayers / nGroups));
+    players.push({ id: i, name: n || `Peserta ${i+1}`, group: gi, color: GROUP_COLORS[gi % GROUP_COLORS.length] });
+  }
+
+  const groups = [];
+  for (let g = 0; g < nGroups; g++) {
+    const gPlayers = players.filter(p => p.group === g);
+    let matches = [];
+
+    if (selectedMethod === 'roundrobin') {
+      const rounds = genRoundRobin(gPlayers.map(p => p.id));
+      rounds.forEach((round, ri) => {
+        round.forEach(([h, a]) => {
+          matches.push({ id: `g${g}_${matches.length}`, babak: ri+1, home: h, away: a, hs: null, as: null });
+        });
+      });
+    } else if (selectedMethod === 'homeaway') {
+      const rounds = genRoundRobin(gPlayers.map(p => p.id));
+      rounds.forEach((round, ri) => {
+        round.forEach(([h, a]) => {
+          matches.push({ id: `g${g}_${matches.length}`, babak: ri*2+1, home: h, away: a, hs: null, as: null });
+          matches.push({ id: `g${g}_${matches.length}`, babak: ri*2+2, home: a, away: h, hs: null, as: null });
+        });
+      });
+    } else {
+      // Elimination — handled separately in bracket
+      matches = [];
+    }
+
+    groups.push({ id: g, players: gPlayers.map(p => p.id), matches, qualify });
+  }
+
+  // Bracket for elimination or post-group
+  let bracket = null;
+  if (selectedMethod === 'elimination') {
+    bracket = buildEliminationBracket(players.map(p => p.id), elimMode);
+  } else {
+    // Knockout bracket placeholder (filled after group stage)
+    const slots = nGroups * qualify;
+    bracket = buildEliminationBracket(Array(slots).fill(null), 'auto');
+  }
+
+  // Polls
+  const polls = {};
+  players.forEach(p => { polls[p.id] = 0; });
+
+  T = { name, method: selectedMethod, elimMode, players, groups, bracket, polls, votes: {}, created: Date.now() };
+  save();
+  renderAll();
+  showToast('Turnamen berhasil dibuat! 🎉');
+
+  // auto-navigate to standings
+  document.querySelectorAll('.nav-tab').forEach((t,i) => t.classList.toggle('active', i===1));
+  document.querySelectorAll('.page').forEach((p,i) => p.classList.toggle('active', i===1));
+}
+
+function buildEliminationBracket(playerIds, mode) {
+  // Pad to power of 2
+  let slots = 1;
+  while (slots < playerIds.length) slots *= 2;
+  const padded = [...playerIds];
+  while (padded.length < slots) padded.push(null);
+
+  const rounds = [];
+  let current = padded;
+  let roundNum = 1;
+  while (current.length >= 2) {
+    const matches = [];
+    for (let i = 0; i < current.length; i += 2) {
+      matches.push({ id: `br_${roundNum}_${i/2}`, home: current[i], away: current[i+1], hs: null, as: null, winner: null });
+    }
+    rounds.push({ round: roundNum, matches });
+    current = matches.map(() => null);
+    roundNum++;
+  }
+  return { rounds, mode };
+}
+
+// ── STANDINGS ─────────────────────────────────────────────────────────────────
+function computeGroupStandings(group) {
+  const stats = {};
+  group.players.forEach(pid => { stats[pid] = { mp:0,w:0,d:0,l:0,gf:0,ga:0,pts:0 }; });
+  group.matches.forEach(m => {
+    if (m.hs === null) return;
+    const h = stats[m.home], a = stats[m.away];
+    h.mp++; a.mp++;
+    h.gf += m.hs; h.ga += m.as;
+    a.gf += m.as; a.ga += m.hs;
+    if (m.hs > m.as) { h.w++; h.pts += 3; a.l++; }
+    else if (m.hs < m.as) { a.w++; a.pts += 3; h.l++; }
+    else { h.d++; a.d++; h.pts++; a.pts++; }
+  });
+  return group.players
+    .map(pid => ({ pid, ...stats[pid], gd: stats[pid].gf - stats[pid].ga }))
+    .sort((a,b) => b.pts-a.pts || b.gd-a.gd || b.gf-a.gf);
+}
+
+function playerName(pid) {
+  if (!T || pid === null || pid === undefined) return 'TBD';
+  const p = T.players.find(p => p.id === pid);
+  return p ? p.name : 'TBD';
+}
+
+function playerColor(pid) {
+  if (!T || pid === null || pid === undefined) return '#94a3b8';
+  const p = T.players.find(p => p.id === pid);
+  return p ? p.color : '#94a3b8';
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────────────────────
+function renderAll() {
+  renderStandings();
+  renderBracket();
+  renderPolling();
+}
+
+// ── RENDER STANDINGS ──────────────────────────────────────────────────────────
+function renderStandings() {
+  if (!T) return;
+  const con = document.getElementById('standings-content');
+  const totalMatches = T.groups.reduce((a,g) => a + g.matches.length, 0);
+  const played = T.groups.reduce((a,g) => a + g.matches.filter(m => m.hs !== null).length, 0);
+  const pct = totalMatches ? Math.round(played/totalMatches*100) : 0;
+
+  let html = `
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-weight:800;font-size:16px">${T.name}</span>
+        <span class="tag tag-sky">${['Round Robin','Home & Away','Eliminasi'][['roundrobin','homeaway','elimination'].indexOf(T.method)]}</span>
+      </div>
+      <div style="font-size:12px;color:var(--gray-400);margin-bottom:8px">${played}/${totalMatches} match selesai</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>
+  `;
+
+  T.groups.forEach((group, gi) => {
+    const col = GROUP_COLORS[gi % GROUP_COLORS.length];
+    const standings = computeGroupStandings(group);
+    const babs = [...new Set(group.matches.map(m => m.babak))].sort((a,b)=>a-b);
+    const methodLabel = T.method === 'homeaway' ? 'Home & Away' : 'Round Robin';
+
+    html += `<div class="card">
+      <div class="group-header">
+        <span class="group-badge tag" style="background:${col}22;color:${col};border:1px solid ${col}44">
+          Grup ${String.fromCharCode(65+gi)}
+        </span>
+        <span class="tag tag-gold">${methodLabel}</span>
+      </div>
+
+      <div class="section-label">Klasemen</div>
+      <table>
+        <thead><tr>
+          <th>#</th><th>Nama</th><th>MP</th><th>W</th><th>D</th><th>L</th>
+          <th>GF</th><th>GA</th><th>SG</th><th>PTS</th>
+        </tr></thead>
+        <tbody>`;
+
+    standings.forEach((row, ri) => {
+      const rankClass = ri === 0 ? 'rank-1' : ri === 1 ? 'rank-2' : 'rank-other';
+      const gdClass = row.gd > 0 ? 'gd-pos' : row.gd < 0 ? 'gd-neg' : '';
+      const isLolos = ri < group.qualify;
+      html += `<tr class="${isLolos ? 'lolos' : ''}">
+        <td><span class="rank-badge ${rankClass}">${ri+1}</span></td>
+        <td style="color:${col};font-weight:700">${playerName(row.pid)}</td>
+        <td>${row.mp}</td><td>${row.w}</td><td>${row.d}</td><td>${row.l}</td>
+        <td>${row.gf}</td><td>${row.ga}</td>
+        <td class="${gdClass}">${row.gd > 0 ? '+' : ''}${row.gd}</td>
+        <td class="pts-cell" style="color:${col}">${row.pts}</td>
+      </tr>`;
+    });
+
+    html += `</tbody></table>
+      <p style="font-size:10px;color:var(--gray-400);margin-top:6px;padding-left:4px">
+        ▌ Lolos · MP=Main · W=Menang · D=Seri · L=Kalah · SG=Selisih Gol</p>
+
+      <div class="section-label" style="margin-top:16px">Jadwal Pertandingan</div>
+      <div style="border:1px solid var(--gray-200);border-radius:var(--radius);overflow:hidden">`;
+
+    babs.forEach(b => {
+      const bMatches = group.matches.filter(m => m.babak === b);
+      html += `<div class="babak-label">Babak ${b}</div>`;
+      bMatches.forEach(m => {
+        const played2 = m.hs !== null;
+        const hw = played2 && m.hs > m.as;
+        const aw = played2 && m.as > m.hs;
+        html += `<div class="match-item" onclick="openModal('${group.id}','${m.id}')">
+          <span class="match-home ${hw ? 'win-name' : ''}" style="color:${hw?col:''}">${playerName(m.home)}</span>
+          <span class="match-score ${played2 ? 'played' : ''}">${played2 ? `${m.hs} : ${m.as}` : '<span class="match-vs">VS</span>'}</span>
+          <span class="match-away ${aw ? 'win-name' : ''}" style="color:${aw?col:''}">${playerName(m.away)}</span>
+          <span class="match-edit">✏️</span>
+        </div>`;
+      });
+    });
+
+    html += `</div></div>`;
+  });
+
+  con.innerHTML = html;
+}
+
+// ── RENDER BRACKET ────────────────────────────────────────────────────────────
+function renderBracket() {
+  if (!T || !T.bracket) return;
+  const con = document.getElementById('bracket-content');
+
+  if (T.method !== 'elimination' && T.groups.length === 1) {
+    con.innerHTML = '<div class="empty"><div class="icon">🪜</div><p>Bracket tersedia untuk metode eliminasi atau turnamen multi-grup.</p></div>';
+    return;
+  }
+
+  const { rounds } = T.bracket;
+  const totalRounds = rounds.length;
+  const roundLabels = ['Final','Semi-Final','Perempat Final','8 Besar','16 Besar','32 Besar'];
+
+  let html = `<div class="card"><div class="card-title"><span class="dot"></span>Bracket Eliminasi</div>
+    <div class="bracket-wrap"><div class="bracket">`;
+
+  rounds.forEach((round, ri) => {
+    const labelIdx = totalRounds - 1 - ri;
+    const label = roundLabels[labelIdx] || `Babak ${round.round}`;
+    html += `<div class="bracket-round">
+      <div class="bracket-round-label">${label}</div>`;
+
+    round.matches.forEach(m => {
+      const hName = m.home !== null ? playerName(m.home) : 'TBD';
+      const aName = m.away !== null ? playerName(m.away) : 'TBD';
+      const hTbd = m.home === null;
+      const aTbd = m.away === null;
+      const hWin = m.winner === m.home && m.home !== null;
+      const aWin = m.winner === m.away && m.away !== null;
+
+      html += `<div class="bracket-match ${!hTbd && !aTbd ? 'active-match' : ''}" onclick="openBracketModal('${ri}','${m.id}')">
+        <div class="bracket-player ${hWin ? 'winner' : ''} ${hTbd ? 'tbd' : ''}">
+          <span>${hName}</span>
+          <span class="bscore">${m.hs !== null ? m.hs : ''}</span>
+        </div>
+        <div class="bracket-player ${aWin ? 'winner' : ''} ${aTbd ? 'tbd' : ''}">
+          <span>${aName}</span>
+          <span class="bscore">${m.as !== null ? m.as : ''}</span>
+        </div>
+      </div>`;
+    });
+
+    html += `</div>`;
+    if (ri < rounds.length - 1) html += `<div class="connector">›</div>`;
+  });
+
+  html += `</div></div></div>`;
+  con.innerHTML = html;
+}
+
+// ── RENDER POLLING ────────────────────────────────────────────────────────────
+function renderPolling() {
+  if (!T) return;
+  const con = document.getElementById('polling-content');
+  const totalVotes = Object.values(T.polls).reduce((a,b) => a+b, 0);
+  const myVote = localStorage.getItem('tourney_vote_' + T.created);
+
+  let html = `
+    <div class="poll-intro">
+      <div class="trophy">🏆</div>
+      <div>
+        <h3>Siapa Jagoanmu?</h3>
+        <p>Vote peserta favoritmu! ${totalVotes} suara terkumpul${myVote ? ' · <span class="poll-voted-badge">✓ Sudah vote</span>' : ''}</p>
+      </div>
+    </div>
+  `;
+
+  const sorted = [...T.players].sort((a,b) => (T.polls[b.id]||0) - (T.polls[a.id]||0));
+  sorted.forEach((p, ri) => {
+    const votes = T.polls[p.id] || 0;
+    const pct = totalVotes ? Math.round(votes / totalVotes * 100) : 0;
+    const isVoted = myVote == p.id;
+
+    html += `<div class="poll-item ${isVoted ? 'voted' : ''}" onclick="vote(${p.id})">
+      <div class="poll-avatar" style="background:${p.color}">${p.name.charAt(0).toUpperCase()}</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span class="poll-name">${p.name}</span>
+          ${ri === 0 && totalVotes > 0 ? '<span class="tag tag-gold">👑 Terfavorit</span>' : ''}
+          ${isVoted ? '<span class="poll-voted-badge">✓ Pilihanmu</span>' : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="poll-bar-wrap"><div class="poll-bar-fill" style="width:${pct}%"></div></div>
+          <span class="poll-pct">${pct}%</span>
+          <span class="poll-votes">${votes} suara</span>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  con.innerHTML = html;
+}
+
+// ── VOTE ──────────────────────────────────────────────────────────────────────
+function vote(pid) {
+  if (!T) return;
+  const key = 'tourney_vote_' + T.created;
+  const prev = localStorage.getItem(key);
+
+  if (prev !== null) {
+    if (parseInt(prev) === pid) { showToast('Kamu sudah vote untuk peserta ini!'); return; }
+    // Change vote
+    T.polls[parseInt(prev)] = Math.max(0, (T.polls[parseInt(prev)] || 0) - 1);
+  }
+
+  T.polls[pid] = (T.polls[pid] || 0) + 1;
+  localStorage.setItem(key, pid);
+  save();
+  renderPolling();
+  showToast('Vote berhasil! 🗳️');
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+let modalGroupId, modalMatchId, modalType;
+
+function openModal(gid, mid) {
+  modalType = 'group';
+  modalGroupId = parseInt(gid);
+  modalMatchId = mid;
+  const group = T.groups.find(g => g.id === modalGroupId);
+  const match = group.matches.find(m => m.id === mid);
+  document.getElementById('modal-home').textContent = playerName(match.home);
+  document.getElementById('modal-away').textContent = playerName(match.away);
+  document.getElementById('modal-hs').value = match.hs ?? 0;
+  document.getElementById('modal-as').value = match.as ?? 0;
+  document.getElementById('modal-title').textContent = `${playerName(match.home)} vs ${playerName(match.away)}`;
+  document.getElementById('score-modal').classList.add('open');
+}
+
+function openBracketModal(ri, mid) {
+  if (!T || !T.bracket) return;
+  const round = T.bracket.rounds[parseInt(ri)];
+  const match = round.matches.find(m => m.id === mid);
+  if (!match || match.home === null || match.away === null) return;
+  modalType = 'bracket';
+  modalGroupId = parseInt(ri);
+  modalMatchId = mid;
+  document.getElementById('modal-home').textContent = playerName(match.home);
+  document.getElementById('modal-away').textContent = playerName(match.away);
+  document.getElementById('modal-hs').value = match.hs ?? 0;
+  document.getElementById('modal-as').value = match.as ?? 0;
+  document.getElementById('modal-title').textContent = `${playerName(match.home)} vs ${playerName(match.away)}`;
+  document.getElementById('score-modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('score-modal').classList.remove('open'); }
+
+function saveScore() {
+  const hs = parseInt(document.getElementById('modal-hs').value) || 0;
+  const as_ = parseInt(document.getElementById('modal-as').value) || 0;
+
+  if (modalType === 'group') {
+    const group = T.groups.find(g => g.id === modalGroupId);
+    const match = group.matches.find(m => m.id === modalMatchId);
+    match.hs = hs; match.as = as_;
+  } else {
+    const round = T.bracket.rounds[modalGroupId];
+    const match = round.matches.find(m => m.id === modalMatchId);
+    match.hs = hs; match.as = as_;
+    match.winner = hs > as_ ? match.home : as_ > hs ? match.away : null;
+    // Advance winner
+    if (match.winner !== null && T.bracket.rounds[modalGroupId + 1]) {
+      const nextRound = T.bracket.rounds[modalGroupId + 1];
+      const matchIdx = round.matches.indexOf(match);
+      const nextMatch = nextRound.matches[Math.floor(matchIdx / 2)];
+      if (matchIdx % 2 === 0) nextMatch.home = match.winner;
+      else nextMatch.away = match.winner;
+    }
+  }
+
+  closeModal();
+  save();
+  renderAll();
+  showToast('Skor disimpan ✓');
+}
+
+// ── SAVE / EXPORT / IMPORT ────────────────────────────────────────────────────
+function save() {
+  if (T) localStorage.setItem('tourney_data', JSON.stringify(T));
+}
+
+function exportData() {
+  if (!T) { showToast('Belum ada data turnamen!'); return; }
+  const blob = new Blob([JSON.stringify(T, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `tourney_${T.name.replace(/\s+/g,'_')}_${Date.now()}.json`;
+  a.click();
+  showToast('Data berhasil diexport ✓');
+}
+
+function importData() {
+  document.getElementById('file-input').click();
+}
+
+function handleImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      T = JSON.parse(ev.target.result);
+      save();
+      renderAll();
+      showToast('Data berhasil diimport ✓');
+    } catch(err) { showToast('File tidak valid!'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// Close modal on bg click
+document.getElementById('score-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>
